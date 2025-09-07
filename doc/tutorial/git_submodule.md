@@ -35,6 +35,7 @@ git submodule update
 # --recursive：递归地更新所有子模块（包括子模块的子模块）。
 # --remote：从子模块的远程仓库拉取最新的更改。
 git submodule update --recursive --remote
+git submodule update --init --recursive
 ```
 
 ## 查看子模块状态
