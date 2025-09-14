@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <map>
 #include <string>
+#include <vector>
 
 #include <task_scheduler.h>
 
@@ -18,63 +19,50 @@ class CTaskSchedulerImpl : public ITaskScheduler
 {
 public:
     CTaskSchedulerImpl() = default;
-    ~CTaskSchedulerImpl() override;
+    ~CTaskSchedulerImpl() noexcept override;
 
     CTaskSchedulerImpl(const CTaskSchedulerImpl &) = delete;
     CTaskSchedulerImpl &operator=(const CTaskSchedulerImpl &) = delete;
     CTaskSchedulerImpl(CTaskSchedulerImpl &&) = delete;
     CTaskSchedulerImpl &operator=(CTaskSchedulerImpl &&) = delete;
 
-    int32_t Init(const char *pSchedulerName, uint32_t uThreadNum);
+    int32_t Init(const char *pSchedulerName, uint32_t uPrecisionUs) noexcept;
 
-    int32_t Start() override;
-    void Stop() override;
+    int32_t Start() noexcept override;
+    void Stop() noexcept override;
 
-    int64_t PostTask(const char *pTaskName, TaskFunc func, uint32_t uDelayMs = 0) override;
-    int64_t PostFixedCountTask(const char *pTaskName, TaskFunc func, uint32_t uIntervalMs, 
-                                uint32_t uCount, bool bRunImmediately = false) override;
-    int64_t PostPeriodicTask(const char *pTaskName, TaskFunc func, uint32_t uIntervalMs, 
-                                bool bRunImmediately = false) override;
-    int32_t CancleTask(int64_t iTaskId) override;
-    
-    int32_t GetStats(std::vector<Stats> &vecStats) override;
+    int64_t PostTask(Task *pTask) noexcept override;
+    int64_t PostOnceTask(const char* pTaskName, TaskFunc pFunc, 
+                        void* pCtx, uint32_t uDelayUs) noexcept override;
+    int64_t PostPeriodicTask(const char* pTaskName, TaskFunc pFunc, void* pCtx, 
+                            uint32_t uDelayUs, uint32_t uInternalUs) noexcept override;
+    int32_t CancleTask(int64_t iTaskID) noexcept override;
+
+    const char *GetStats() noexcept override;
 
 private:
     void Run();
 
 private:
-    enum class TaskType : uint8_t
+    struct TaskEx
     {
-        kOnce = 0,
-        kFixedCount,
-        kPeriodic
-    };
-
-    struct Task
-    {
-        TaskType eType;
-        uint32_t uDelayMs;
-        uint32_t uIntervalMs;
-        TaskFunc funcTask;
-        uint32_t uExecedCount;
-        uint32_t uFixedCount;
-        int64_t uTaskId;
+        Task task;
+        int64_t uTaskExecCount;
+        int64_t iTaskID;
     };
 
 private:
     volatile bool m_bRunning {false};
-    uint32_t m_uThreadNum {0};
     std::string m_strSchedulerName;
-    std::vector<std::thread> m_vecThreads;
+    std::thread m_thScheduler;
+    
+    std::mutex m_lock;
+    std::condition_variable m_cond;
+    uint32_t m_uCondWaitUs {10};
 
-    std::mutex m_lockTasks;
-    std::condition_variable m_condTasks;
-    std::map<uint64_t, Task> m_mapTasks;
+    std::map<uint64_t, TaskEx> m_mapTasks;
 
-    int64_t m_iNextTaskId {0};
-
-    std::mutex m_lockStats;
-    std::map<uint64_t, Stats> m_mapStats;
+    int64_t m_iNextTaskID {0};
 };
 
 }

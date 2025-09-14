@@ -28,12 +28,12 @@ DEFINES :=
 EXTRA_CFLAGS := -O0 -g -std=c++11 -fPIC -fvisibility=hidden
 # inc-y:          Header include paths.
 #                 头文件搜索目录
-inc-y := ./ ../../include ../../../3rd/googletest/googletest/include
+inc-y := ../include ../sources ../../3rd/googletest/googletest/include
 # src-y:          Sources. The items ending with a trailing / are regarded as directories, the others
 #                 are regareded as files. The files with specified suffixes in those directories will
 #                 be automatically involved in compilation.
 #                 源文件列表。其中以/结尾的表示目录，其它的表示文件。
-src-y := ./ ../../sources/cppx_last_error.cpp
+src-y := ./
 # obj-y:          Extra object file list.
 #                 加入连接的obj文件列表。通常这些obj文件不通过源文件编译产生。
 obj-y := 
@@ -52,7 +52,7 @@ OBJECT_DIR := build
 LD_SCRIPT := 
 # LIBS:           The libraries for linking.
 #                 连接时需要的lib文件
-LIBS := -L ../../../3rd/lib/$(ARCH)/ -lgtest
+LIBS := -L ../../lib/$(ARCH)/ -lgtest -lcppx_base
 # LDFLAGS:        All other linker flags.
 #                 连接参数
 LDFLAGS := 
@@ -77,7 +77,7 @@ DEPEND_SUFFIX :=
 TARGET_TYPE := EXE
 # TARGET:         The path name of the final target.
 #                 整个工程最终产生的target文件名
-TARGET := ./unittest.out
+TARGET := ./cppx_base_unittest.out
 # IGNORE_ME:      The changes of this script will not cause remaking of any target.
 IGNORE_ME := 
 # CENTRALIZED_SINGLE_DEPEND_FILE:  Use one single dependency file instead of 

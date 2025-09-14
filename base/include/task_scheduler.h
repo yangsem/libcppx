@@ -2,133 +2,109 @@
 #define __CPPX_TASK_SCHEDULER_H__
 
 #include <stdint.h>
-#include <string.h>
-#include <functional>
-#include <vector>
+#include <cppx_export.h>
 
 namespace cppx
 {
 namespace base
 {
 
-class ITaskScheduler
+class EXPORT ITaskScheduler
 {
 protected:
-    virtual ~ITaskScheduler() = default;
+    virtual ~ITaskScheduler() noexcept = default;
 
 public:
-    using TaskFunc = std::function<void()>;
-    static const int64_t kInvalidTaskId = uint64_t(-1);
-
-    struct Stats
+    using TaskFunc = void (*) (void *);
+    
+    enum TaskID : int64_t
     {
-        int64_t iTaskId;
-        const char *pTaskName;
-        const char *pTaskStatus;
-        const char *pTaskType;
-        uint32_t uDelayMs;
-        uint32_t uIntervalMs;
-        uint64_t uPostTime;
-        uint64_t uFixedCount;
-        uint64_t uExecCount;
-        uint64_t uTotalExecTimeMs;
-        uint64_t uAvgExecTimeMs;
-        uint64_t uMaxExecTimeMs;
-        uint64_t uMinExecTimeMs;
+        kInvalidTaskID = int64_t(-1)
+    };
 
-        void Reset()
-        {
-            memset(this, 0, sizeof(Stats));
-        }
+    enum class TaskVersion : uint8_t
+    {
+        kVersion = 0x01
+    };
+
+    enum TaskFlag : uint16_t
+    {
+        kTaskCancel = 1 << 0,
+        kTaskRunning = 1 << 1
+    };
+
+    enum class TaskType : uint8_t
+    {
+        kRunFixedCount = 0,
+        kRunPeriodic
+    };
+
+    struct Task
+    {
+        const char *pTaskName;
+        TaskFunc pTaskFunc;
+        void *pTaskCtx;
+        TaskType eTaskType;
+        TaskVersion eVersion;
+        uint16_t uFlags;
+        uint32_t uTaskExecTimes;
+        uint32_t uDelayUs;
+        uint32_t uIntervalUs;
     };
     
     /**
-     * @brief Create a ITaskScheduler instance
-     * @param pSchedulerName Name of the task scheduler (must be a string literal)
-     * @param uThreadNum Number of threads in the thread pool
-     * @return Pointer to the created ITaskScheduler instance or nullptr on failure
+     * @brief 创建一个任务调度器实例
+     * @param[in] pSchedulerName 任务调度器的名字
+     * @param[in] uPrecisionUs 调度线程空闲休眠间隔时间
+     * @return 成功返回调度器实例指针，失败返回 nullptr
+     * @note 多线程安全
      *
     */
-    static ITaskScheduler *Create(const char *pSchedulerName, uint32_t uThreadNum = 1);
+    static ITaskScheduler *Create(const char *pSchedulerName, uint32_t uPrecisionUs = 10) noexcept;
 
     /**
-     * @brief Destroy a ITaskScheduler instance
-     * @param pScheduler Pointer to the ITaskScheduler instance to be destroyed
-     * 
+     * @brief 释放任务调度器实例
+     * @param[in] 调用Create接口创建的 pScheduler
+     * @note 接口多线程安全，但不能多线程Destory同一个pScheduler
     */
-    static void Destroy(ITaskScheduler *pScheduler);
+    static void Destroy(ITaskScheduler *pScheduler) noexcept;
 
     /**
-     * @brief Start the task scheduler thread pool
-     * @return 0 on success, negative value on failure
-     * 
-     * @note thread-safe
+     * @brief 启动调度器线程
+     * @return 成功返回 0 ，否则失败
     */
-    virtual int32_t Start() = 0;
+    virtual int32_t Start() noexcept = 0;
 
     /**
-     * @brief Stop the task scheduler thread pool
-     * 
-     * @note thread-safe
+     * @brief 同步停止调度器线程
+     * @note 多线程安全
     */
     virtual void Stop() = 0;
 
     /**
-     * @brief Post a task to be executed after a delay
-     * @param pTaskName Optional name for the task (must be a string literal)
-     * @param task The task to be executed
-     * @param uDelayMs Delay in milliseconds before executing the task
-     * 
-     * @return Task ID for the posted task, negative value on failure
-     * 
-     * @note thread-safe
+     * @brief 投递一个任务到调度器执行
+     * @param[in] pTask 任务
+     * @return 成功返回 TaskID，否则返回 kInvalidTaskID
+     * @note 多线程安全
     */
-    virtual int64_t PostTask(const char *pTaskName, TaskFunc func, uint32_t uDelayMs = 0) = 0;
+    virtual int64_t PostTask(Task *pTask) noexcept = 0;
+    virtual int64_t PostOnceTask(const char* pTaskName, TaskFunc pFunc, void* pCtx, 
+                                uint32_t uDelayUs) noexcept = 0;
+    virtual int64_t PostPeriodicTask(const char* pTaskName, TaskFunc pFunc, void* pCtx, 
+                                     uint32_t uDelayUs, uint32_t uInternalUs) noexcept = 0;
 
     /**
-     * @brief Post a fixed count periodic task to be executed at regular intervals
-     * @param pTaskName Optional name for the task (must be a string literal)
-     * @param func The task to be executed
-     * @param uIntervalMs Interval in milliseconds between task executions
-     * @param uCount Number of times the task should be executed
-     * 
-     * @return Task ID for the posted fixed count periodic task, negative value on failure
-     * 
-     * @note thread-safe
+     * @brief 根据TaskID取消一个任务
+     * @param[in] PostTask 返回的有效 TaskID
+     * @return 成功返回 0，否则失败
     */
-    virtual int64_t PostFixedCountTask(const char *pTaskName, TaskFunc func, uint32_t uIntervalMs, 
-                                       uint32_t uCount, bool bRunImmediately = false) = 0;
+    virtual int32_t CancleTask(int64_t iTaskID) noexcept = 0;
 
     /**
-     * @brief Post a periodic task to be executed at regular intervals
-     * @param pTaskName Optional name for the task (must be a string literal)
-     * @param func The task to be executed
-     * @param uIntervalMs Interval in milliseconds between task executions
-     * 
-     * @return Task ID for the posted periodic task, negative value on failure
-     * 
-     * @note thread-safe
+     * @brief 获取调度器任务队列中的任务调度信息
+     * return 成功返回正在处理的任务调度信息，否则返回 nullptr
     */
-    virtual int64_t PostPeriodicTask(const char *pTaskName, TaskFunc func, uint32_t uIntervalMs, 
-                                     bool bRunImmediately = false) = 0;
-
-    /**
-     * @brief Cancel a previously posted periodic task
-     * @param iTaskId Task ID of the periodic task to be cancelled
-     * @return 0 on success, negative value on failure
-     * 
-     * @note thread-safe
-    */
-    virtual int32_t CancleTask(int64_t iTaskId) = 0;
-
-    /**
-     * @brief Get statistics of all tasks
-     * @param vecStats Vector to store the statistics of all tasks
-     * @return 0 on success, negative value on failure
-     * 
-     * @note thread-safe
-    */
-    virtual int32_t GetStats(std::vector<Stats> &vecStats) = 0;
+    virtual const char *GetStats() noexcept = 0;
 };
 
 }

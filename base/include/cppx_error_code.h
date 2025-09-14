@@ -16,6 +16,7 @@ enum ErrorCode
     kThrowException,
     kInvalidCall,
     kSysCallFailed,
+    kFuncCallFailed,
 };
 
 }

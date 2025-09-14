@@ -1,12 +1,6 @@
 #ifndef __CPPX_COMMON_H__
 #define __CPPX_COMMON_H__
 
-#if defined(__WIN32) || defined(__WIN64)
-#define OS_WIN
-#else
-#define OS_LINUX
-#endif
-
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -15,6 +9,8 @@
 #include <time.h>
 #include <errno.h>
 #include <assert.h>
+
+#include <cppx_export.h>
 
 #ifndef OS_WIN
 #define likely(x) __builtin_expect((x), 1)
@@ -39,25 +35,19 @@
 #define gettid() syscall(SYS_gettid)
 #define set_thread_name(name) pthread_setname_np(pthread_self(), name)
 #define thread_bind_cpu(cpu_no)                                             \
-    do                                                                      \
     {                                                                       \
         cpu_set_t cpuset;                                                   \
         CPU_ZERO(&cpuset);                                                  \
         CPU_SET(cpu_no, &cpuset);                                           \
         pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset); \
-    } while (0)
+    }
 #else
 #include <windows.h>
 #define getpid() GetCurrentProcessId()
 #define gettid() GetCurrentThreadId()
 #define set_thread_name(name) // not supported in windows
 #define thread_bind_cpu(cpu_no) // not supported in windows
-#endif
-
-#ifndef OS_WIN
-#define EXPORT __attribute__((visibility("default")))
-#else
-#define EXPORT __declspec(dllexport)
+#define clock_time_nano()
 #endif
 
 #define CACHE_LINE 64
@@ -70,6 +60,23 @@
 #define MAX_NAME_LEN 128
 #define MAX_FILE_LEN 256
 #define MAX_PATH_LEN 1024
+
+
+constexpr uint64_t kNano = uint64_t(1);
+constexpr uint64_t kMicro = kNano * 1000;
+constexpr uint64_t kMill = kMicro * 1000;
+constexpr uint64_t kSecond = kMill * 1000;
+
+#ifndef OS_WIN
+#define clock_get_time_nano(time)                  \
+    {                                              \
+        timespec ts;                               \
+        clock_gettime(CLOCK_MONOTONIC, &ts);       \
+        time = (ts.tv_sec * kSecond) + ts.tv_nsec; \
+    }
+#else
+#define clock_get_time_nano(time)
+#endif
 
 #ifdef OS_LINUX
 #define RESET "\033[0m"

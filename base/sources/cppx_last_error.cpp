@@ -1,5 +1,6 @@
 #include "cppx_last_error.h"
-#include "cppx_common.h"
+#include <string>
+#include <cppx_common.h>
 
 namespace cppx
 {
@@ -34,12 +35,12 @@ int32_t LastError::SetLastError(int32_t iErrorNo, const char *pErrorStr)
     {
         if (likely(pErrorStr != nullptr))
         {
-            auto &strLastError = GetLastErrorStr();
+            auto &strLastError = GetLastErrorStrVar();
             strLastError = pErrorStr;
         }
         else
         {
-            auto &strLastError = GetLastErrorStr();
+            auto &strLastError = GetLastErrorStrVar();
             strLastError = "unknown error " + std::to_string(iErrorNo);
         }
     }
@@ -55,9 +56,9 @@ int32_t LastError::GetLastError()
     return GetLastErrorVar();
 }
 
-std::string & LastError::GetLastErrorStr()
+const char *LastError::GetLastErrorStr()
 {
-    return GetLastErrorStrVar();
+    return GetLastErrorStrVar().c_str();
 }
 
 }

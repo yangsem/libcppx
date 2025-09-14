@@ -2,8 +2,7 @@
 #define __CPPX_LAST_ERROR_H__
 
 #include <stdint.h>
-#include <stdio.h>
-#include <string>
+#include <cppx_export.h>
 
 #ifndef LAST_ERROR_BUFFER_SIZE
 #define LAST_ERROR_BUFFER_SIZE 256
@@ -20,7 +19,7 @@ namespace cppx
 namespace base
 {
 
-class LastError
+class EXPORT LastError
 {
     LastError();
     ~LastError();
@@ -51,7 +50,7 @@ public:
      * 
      * @note This function is thread-safe and returns the error message for the calling thread
     */
-    static std::string & GetLastErrorStr();
+    static const char *GetLastErrorStr();
 };
 
 }

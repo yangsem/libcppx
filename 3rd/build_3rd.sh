@@ -4,7 +4,9 @@ WORKDIR=`pwd`
 
 ARCH=$(uname -m)
 
-mkdir -p lib/${ARCH}/
+LIB_PATH=${WORKDIR}/../lib/${ARCH}/
+
+mkdir -p ../lib/${ARCH}/
 
 function compile_gtest()
 {
@@ -15,7 +17,7 @@ function compile_gtest()
     cmake -DCMAKE_CXX_STANDARD=11  ../ && \
     make -j10 && \
     echo "Compiled googletest successfully." && \
-    cp -r lib/*.a $WORKDIR/lib/${ARCH}/
+    cp -r lib/*.a ${LIB_PATH}
 
     if [ $? -ne 0 ]; then
         echo "Failed to compile googletest."
