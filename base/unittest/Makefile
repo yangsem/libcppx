@@ -52,7 +52,7 @@ OBJECT_DIR := build
 LD_SCRIPT := 
 # LIBS:           The libraries for linking.
 #                 连接时需要的lib文件
-LIBS := -L ../../lib/$(ARCH)/ -lgtest -lcppx_base
+LIBS := -L ../../3rd/lib/$(ARCH)/ -lgtest -lcppx_base
 # LDFLAGS:        All other linker flags.
 #                 连接参数
 LDFLAGS := 

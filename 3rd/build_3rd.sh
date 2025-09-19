@@ -1,25 +1,25 @@
 #!/bin/bash
 
-WORKDIR=`pwd`
+WORKDIR=$(pwd)
 
 ARCH=$(uname -m)
 
-LIB_PATH=${WORKDIR}/../lib/${ARCH}/
+LIB_PATH=${WORKDIR}/lib/${ARCH}/
 
-mkdir -p ../lib/${ARCH}/
+mkdir -p "${LIB_PATH}"
 
 function compile_gtest()
 {
     echo "Compiling googletest ..."
 
-    cd $WORKDIR/googletest && \
+    cd "$WORKDIR"/googletest && \
     mkdir -p build && cd build && \
     cmake -DCMAKE_CXX_STANDARD=11  ../ && \
     make -j10 && \
     echo "Compiled googletest successfully." && \
-    cp -r lib/*.a ${LIB_PATH}
+    cp -r lib/*.a "${LIB_PATH}"
 
-    if [ $? -ne 0 ]; then
+    if [ ! $? ]; then
         echo "Failed to compile googletest."
     fi
 }

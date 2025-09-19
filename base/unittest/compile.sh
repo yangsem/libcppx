@@ -2,7 +2,7 @@
 
 if [ "$1" == "base" ]; then
     cd ../ && make clean && make -j6
-    cd -
+    cd - || exit
 else
     make clean && make -j6
 fi

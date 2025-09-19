@@ -77,7 +77,7 @@ TARGET_TYPE := SO
 # TARGET_TYPE := EXE
 # TARGET:         The path name of the final target.
 #                 整个工程最终产生的target文件名
-TARGET := ../lib/$(ARCH)/libcppx_base.so
+TARGET := ../3rd/lib/$(ARCH)/libcppx_base.so
 # IGNORE_ME:      The changes of this script will not cause remaking of any target.
 IGNORE_ME := 
 # CENTRALIZED_SINGLE_DEPEND_FILE:  Use one single dependency file instead of 

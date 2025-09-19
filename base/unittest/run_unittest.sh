@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ARCH=`uname -m`
+ARCH=$(uname -m)
 
-export LD_LIBRARY_PATH=../../lib/${ARCH}:${LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH=../../3rd/lib/${ARCH}:${LD_LIBRARY_PATH}
 
-./cppx_base_unittest.out $*
+./cppx_base_unittest.out "$*"
