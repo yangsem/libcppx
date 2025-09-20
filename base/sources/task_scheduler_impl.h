@@ -15,7 +15,7 @@ namespace cppx
 namespace base
 {
 
-class CTaskSchedulerImpl : public ITaskScheduler
+class CTaskSchedulerImpl final : public ITaskScheduler
 {
 public:
     CTaskSchedulerImpl() = default;
