@@ -8,6 +8,7 @@
 
 ```
 git submodule add <repo-url> [<path>]
+git submodule add -b branch <repo-url> [<path>]
 ```
 
 指定分支,打开 .gitmodules 文件，增加 branch 字段，如：

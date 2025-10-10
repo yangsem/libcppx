@@ -226,7 +226,7 @@ ITime ITime::GetUTCTime() noexcept
     return ITime(GetUTCTSecond());
 }
 
-uint64_t ITime::GetUTCTSecond()
+uint64_t ITime::GetUTCTSecond() noexcept
 {
     timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);

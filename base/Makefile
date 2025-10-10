@@ -28,7 +28,7 @@ DEFINES :=
 EXTRA_CFLAGS := -O0 -g -std=c++11 -fPIC -fvisibility=hidden
 # inc-y:          Header include paths.
 #                 头文件搜索目录
-inc-y := include sources
+inc-y := include sources ../3rd/jsoncpp/include
 # src-y:          Sources. The items ending with a trailing / are regarded as directories, the others
 #                 are regareded as files. The files with specified suffixes in those directories will
 #                 be automatically involved in compilation.
@@ -52,7 +52,7 @@ OBJECT_DIR := build
 LD_SCRIPT := 
 # LIBS:           The libraries for linking.
 #                 连接时需要的lib文件
-LIBS := 
+LIBS := -L ../3rd/lib/$(ARCH)/ -ljsoncpp
 # LDFLAGS:        All other linker flags.
 #                 连接参数
 LDFLAGS := 
@@ -77,7 +77,7 @@ TARGET_TYPE := SO
 # TARGET_TYPE := EXE
 # TARGET:         The path name of the final target.
 #                 整个工程最终产生的target文件名
-TARGET := ../3rd/lib/$(ARCH)/libcppx_base.so
+TARGET := ../lib/$(ARCH)/libcppx_base.so
 # IGNORE_ME:      The changes of this script will not cause remaking of any target.
 IGNORE_ME := 
 # CENTRALIZED_SINGLE_DEPEND_FILE:  Use one single dependency file instead of 

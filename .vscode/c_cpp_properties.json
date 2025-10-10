@@ -5,6 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/3rd/googletest/googletest/include",
+                "${workspaceFolder}/3rd/jsoncpp/include",
                 "${workspaceFolder}/base/include"
             ],
             "defines": [],
