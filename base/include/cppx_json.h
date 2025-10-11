@@ -19,50 +19,68 @@ public:
         kJsonTypeString,
         kJsonTypeNumber,
         kJsonTypeBoolean,
+        kJsonTypeNull,
     };
 
-    class JsonGuard
+    template<typename T, bool bJsonObj = true>
+    class Guard
     {
     public:
-        JsonGuard(IJson *pJson) : m_pJson(pJson) {}
+        Guard(T *ptr) : m_ptr(ptr) {}
 
-        JsonGuard(const JsonGuard &) = delete;
-        JsonGuard &operator=(const JsonGuard &) = delete;
+        Guard(const Guard &) = delete;
+        Guard &operator=(const Guard &) = delete;
 
-        JsonGuard(JsonGuard &&jsonGuard) noexcept
+        Guard(Guard &&guard) noexcept
         {
-            m_pJson = jsonGuard.m_pJson;
-            jsonGuard.m_pJson = nullptr;
+            m_ptr = guard.m_ptr;
+            guard.m_ptr = nullptr;
         }
 
-        JsonGuard &operator=(JsonGuard &&jsonGuard) noexcept
+        Guard &operator=(Guard &&guard) noexcept
         {
-            m_pJson = jsonGuard.m_pJson;
-            jsonGuard.m_pJson = nullptr;
+            m_ptr = guard.m_ptr;
+            guard.m_ptr = nullptr;
             return *this;
         }
 
-        ~JsonGuard() noexcept
+        ~Guard() noexcept
         {
-            if (m_pJson != nullptr)
+            if (m_ptr != nullptr)
             {
-                IJson::Destroy(m_pJson);
+                if (bJsonObj)
+                {
+                    IJson::Destroy((IJson *)m_ptr);
+                }
+                else
+                {
+                    delete[] m_ptr;
+                }
+                m_ptr = nullptr;
             }
         }
 
-        IJson *operator->() noexcept
+        T *get()
         {
-            return m_pJson;
+            return m_ptr;
         }
 
-        IJson &operator*() noexcept
+        T *operator->() noexcept
         {
-            return *m_pJson;
+            return m_ptr;
+        }
+
+        T &operator*() noexcept
+        {
+            return *m_ptr;
         }
 
     private:
-        IJson *m_pJson {nullptr};
+        T *m_ptr {nullptr};
     };
+
+    using JsonGuard = Guard<IJson, true>;
+    using JsonStrGuard = Guard<char, false>;
 
 protected:
     virtual ~IJson() noexcept = default;
@@ -110,7 +128,7 @@ public:
      * @return 成功返回IJson对象指针，失败返回nullptr
      * @note 多线程不安全
      */
-    virtual IJson *GetObject(const char *pKey) noexcept = 0;
+    virtual IJson::JsonGuard GetObject(const char *pKey) const noexcept = 0;
 
     /**
      * @brief 获取一个数组
@@ -118,7 +136,7 @@ public:
      * @return 成功返回IJson对象指针，失败返回nullptr
      * @note 多线程不安全
      */
-    virtual IJson *GetArray(const char *pKey) noexcept = 0;
+    virtual IJson::JsonGuard GetArray(const char *pKey) const noexcept = 0;
 
     /**
      * @brief 获取一个字符串
@@ -127,7 +145,7 @@ public:
      * @return 成功返回字符串指针，失败返回nullptr
      * @note 多线程不安全
      */
-    virtual const char *GetString(const char *pKey, const char *pDefault = nullptr) noexcept = 0;
+    virtual const char *GetString(const char *pKey, const char *pDefault = nullptr) const noexcept = 0;
 
     /**
      * @brief 获取一个整数
@@ -136,7 +154,7 @@ public:
      * @return 成功返回整数，失败返回默认值
      * @note 多线程不安全
      */
-    virtual int32_t GetInt(const char *pKey, int32_t iDefault = 0) noexcept = 0;
+    virtual int32_t GetInt(const char *pKey, int32_t iDefault = 0) const noexcept = 0;
 
     /**
      * @brief 获取一个布尔值
@@ -145,7 +163,7 @@ public:
      * @return 成功返回布尔值，失败返回默认值
      * @note 多线程不安全
      */
-    virtual bool GetBool(const char *pKey, bool bDefault = false) noexcept = 0;
+    virtual bool GetBool(const char *pKey, bool bDefault = false) const noexcept = 0;
 
     /**
      * @brief 设置一个对象
@@ -197,9 +215,9 @@ public:
      * @param bPretty 是否美化格式
      * @return 成功返回JSON字符串指针，失败返回nullptr
      * @note 多线程不安全
-     * @note 返回的指针不需要手动释放，再次调用同一个对象的ToString接口后上次的指针会失效
+     * @note 返回的指针需要手动释放
      */
-    virtual const char *ToString(bool bPretty = false) noexcept = 0;
+    virtual JsonStrGuard ToString(bool bPretty = false) const noexcept = 0;
 
     /**
      * @brief 获取一个对象的类型
@@ -207,7 +225,7 @@ public:
      * @return 成功返回对象类型，失败返回kJsonTypeObject
      * @note 多线程不安全
      */
-    virtual JsonType GetType(const char *pKey = nullptr) noexcept = 0;
+    virtual JsonType GetType(const char *pKey = nullptr) const noexcept = 0;
 };
 
 }

@@ -11,7 +11,7 @@ enum ErrorCode
     kSuccess = 0,
     kNotSupported,
     kNoMemory,
-    
+
     kInvalidParam = 100,
     kThrowException,
     kInvalidCall,

@@ -13,27 +13,31 @@ class CJsonImpl final : public IJson
 {
 public:
     CJsonImpl() = default;
+    CJsonImpl(const Json::Value &&jsonValue);
     ~CJsonImpl() noexcept override;
 
     CJsonImpl(const CJsonImpl &) = delete;
     CJsonImpl &operator=(const CJsonImpl &) = delete;
-    CJsonImpl(CJsonImpl &&) = delete;
     CJsonImpl &operator=(CJsonImpl &&) = delete;
 
     int32_t Parse(const char *pJsonStr) noexcept override;
     int32_t ParseFile(const char *pJsonFile) noexcept override;
-    IJson *GetObject(const char *pKey) noexcept override;
-    IJson *GetArray(const char *pKey) noexcept override;
-    const char *GetString(const char *pKey, const char *pDefault = nullptr) noexcept override;
-    int32_t GetInt(const char *pKey, int32_t iDefault = 0) noexcept override;
-    bool GetBool(const char *pKey, bool bDefault = false) noexcept override;
+
+    IJson::JsonGuard GetObject(const char *pKey) const noexcept override;
+    IJson::JsonGuard GetArray(const char *pKey) const noexcept override;
+    const char *GetString(const char *pKey, const char *pDefault = nullptr) const noexcept override;
+    int32_t GetInt(const char *pKey, int32_t iDefault = 0) const noexcept override;
+    bool GetBool(const char *pKey, bool bDefault = false) const noexcept override;
+
     int32_t SetObject(const char *pKey, IJson *pJson) noexcept override;
     int32_t SetArray(const char *pKey, IJson *pJson) noexcept override;
     int32_t SetString(const char *pKey, const char *pValue) noexcept override;
     int32_t SetInt(const char *pKey, int32_t iValue) noexcept override;
     int32_t SetBool(const char *pKey, bool bValue) noexcept override;
-    const char *ToString(bool bPretty = false) noexcept override;
-    JsonType GetType(const char *pKey = nullptr) noexcept override;
+
+    JsonStrGuard ToString(bool bPretty = false) const noexcept override;
+
+    JsonType GetType(const char *pKey = nullptr) const noexcept override;
 
 private:
     Json::Value m_jsonValue;
