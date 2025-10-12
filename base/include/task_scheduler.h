@@ -58,7 +58,6 @@ public:
      * @param[in] uPrecisionUs 调度线程空闲休眠间隔时间
      * @return 成功返回调度器实例指针，失败返回 nullptr
      * @note 多线程安全
-     *
     */
     static ITaskScheduler *Create(const char *pSchedulerName, uint32_t uPrecisionUs = 10) noexcept;
 
