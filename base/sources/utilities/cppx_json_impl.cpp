@@ -4,9 +4,9 @@
 #include <iostream>
 #include <cctype>
 
-#include <cppx_common.h>
-#include <cppx_last_error.h>
-#include <cppx_error_code.h>
+#include <utilities/cppx_common.h>
+#include <utilities/cppx_last_error.h>
+#include <utilities/cppx_error_code.h>
 
 namespace cppx
 {

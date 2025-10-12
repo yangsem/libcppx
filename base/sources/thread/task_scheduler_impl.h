@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <task_scheduler.h>
+#include <thread/task_scheduler.h>
 
 namespace cppx
 {

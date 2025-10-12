@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <thread>
-#include <task_scheduler.h>
-#include <cppx_common.h>
+#include <thread/task_scheduler.h>
+#include <utilities/cppx_common.h>
 #include <chrono>
 #include <atomic>
 #include <string>

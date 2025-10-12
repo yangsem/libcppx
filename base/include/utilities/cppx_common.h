@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <assert.h>
 
-#include <cppx_export.h>
+#include <utilities/cppx_export.h>
 
 #ifndef OS_WIN
 #define likely(x) __builtin_expect((x), 1)

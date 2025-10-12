@@ -1,7 +1,7 @@
 #ifndef __CPPX_JSON_IMPL_H__
 #define __CPPX_JSON_IMPL_H__
 
-#include "cppx_json.h"
+#include <utilities/cppx_json.h>
 #include <json/json.h>
 
 namespace cppx

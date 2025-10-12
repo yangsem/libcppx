@@ -33,7 +33,7 @@ inc-y := include sources ../3rd/jsoncpp/include
 #                 are regareded as files. The files with specified suffixes in those directories will
 #                 be automatically involved in compilation.
 #                 源文件列表。其中以/结尾的表示目录，其它的表示文件。
-src-y := sources/
+src-y := sources/channel/ sources/log/ sources/memory/ sources/thread/ sources/utilities/
 # obj-y:          Extra object file list.
 #                 加入连接的obj文件列表。通常这些obj文件不通过源文件编译产生。
 obj-y := 

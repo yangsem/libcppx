@@ -2,7 +2,7 @@
 #define __CPPX_LAST_ERROR_H__
 
 #include <stdint.h>
-#include <cppx_export.h>
+#include <utilities/cppx_export.h>
 
 #ifndef LAST_ERROR_BUFFER_SIZE
 #define LAST_ERROR_BUFFER_SIZE 256
