@@ -8,7 +8,8 @@
 #include <string>
 #include <vector>
 
-#include <thread/task_scheduler.h>
+#include <thread/cppx_task_scheduler.h>
+#include <thread/cppx_thread_manager.h>
 
 namespace cppx
 {
@@ -41,6 +42,7 @@ public:
     const char *GetStats() noexcept override;
 
 private:
+    static bool RunWrapper(void *ptr);
     void Run();
 
 private:
@@ -52,10 +54,11 @@ private:
     };
 
 private:
-    volatile bool m_bRunning {false};
+    IThreadManager *m_pThreadManager {nullptr};
+    IThread *m_pThread {nullptr};
+
     std::string m_strSchedulerName;
-    std::thread m_thScheduler;
-    
+
     std::mutex m_lock;
     std::condition_variable m_cond;
     uint32_t m_uCondWaitUs {10};
