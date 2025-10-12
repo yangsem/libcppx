@@ -8,9 +8,6 @@ namespace cppx
 namespace base
 {
 
-// static const char *szTaskTypeArr[] = {"RunOnce", "RunFixedCount", "RunPeriodic"};
-// static const char *szTaskStatusArr[] = {"Waiting", "Running"};
-
 ITaskScheduler *ITaskScheduler::Create(const char *pSchedulerName, uint32_t uPrecisionUs) noexcept
 {
     CTaskSchedulerImpl *pScheduler = NEW CTaskSchedulerImpl();
@@ -131,7 +128,7 @@ int64_t CTaskSchedulerImpl::PostTask(Task *pTask) noexcept
 
     uint64_t uExecTimeNs;
     clock_get_time_nano(uExecTimeNs);
-    uExecTimeNs += pTask->uDelayUs;
+    uExecTimeNs += (pTask->uDelayUs * kMicro);
 
     std::lock_guard<std::mutex> guard(m_lock);
     while (unlikely(m_mapTasks.count(uExecTimeNs)) != 0)
@@ -203,7 +200,7 @@ int32_t CTaskSchedulerImpl::CancleTask(int64_t iTaskID) noexcept
     {
         if (taskEx.second.iTaskID == iTaskID)
         {
-            taskEx.second.task.uFlags &= TaskFlag::kTaskCancel;
+            taskEx.second.task.uFlags |= TaskFlag::kTaskCancel;
             return 0;
         }
     }
@@ -224,7 +221,7 @@ const char *CTaskSchedulerImpl::GetStats() noexcept
 void CTaskSchedulerImpl::Run()
 {
     char szThreadName[16];
-    snprintf(szThreadName, sizeof(szThreadName), "sc_%s", m_strSchedulerName.c_str());
+    snprintf(szThreadName, sizeof(szThreadName), "task_sch_%s", m_strSchedulerName.c_str());
     set_thread_name(szThreadName);
 
     constexpr uint32_t uBatchTask = 16;
@@ -253,22 +250,26 @@ void CTaskSchedulerImpl::Run()
             std::lock_guard<std::mutex> guard(m_lock);
             for (auto iter = m_mapTasks.begin(); iter != m_mapTasks.end();)
             {
-                if (likely(iter->first <= uCurrNano))
+                // 如果任务被取消，则删除
+                if (ACCESS_ONCE(iter->second.task.uFlags) & TaskFlag::kTaskCancel)
                 {
-                    if (likely(!(iter->second.task.uFlags & TaskFlag::kTaskCancel)))
-                    {
-                        batchTaskEx[uCurrTaskSize++] = &(*iter);
-                        if (unlikely(uCurrTaskSize >= uBatchTask))
-                        {
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        iter = m_mapTasks.erase(iter);
-                    }
+                    iter = m_mapTasks.erase(iter);
+                    continue;
                 }
-                else
+
+                // 还没到执行时间，则跳出
+                if (likely(iter->first > uCurrNano))
+                {
+                    break;
+                }
+
+                // 任务可以执行，则添加到批量执行队列
+                iter->second.task.uFlags |= TaskFlag::kTaskRunning;
+                batchTaskEx[uCurrTaskSize++] = &(*iter);
+                iter++;
+
+                // 批量执行队列满了，则跳出
+                if (unlikely(uCurrTaskSize >= uBatchTask))
                 {
                     break;
                 }
@@ -277,23 +278,22 @@ void CTaskSchedulerImpl::Run()
 
         for (uint32_t i = 0; i < uCurrTaskSize; i++)
         {
-            auto taskEx = batchTaskEx[i]->second;
+            auto &taskEx = const_cast<TaskEx &>(batchTaskEx[i]->second);
             taskEx.task.pTaskFunc(taskEx.task.pTaskCtx);
             taskEx.uTaskExecCount++;
         }
 
         for (uint32_t i = 0; i < uCurrTaskSize; i++)
         {
-            auto taskEx = batchTaskEx[i]->second;
+            auto &taskEx = const_cast<TaskEx &>(batchTaskEx[i]->second);
             std::lock_guard<std::mutex> guard(m_lock);
-            taskEx.task.uFlags &= ~TaskFlag::kTaskRunning;
-            m_mapTasks.erase(batchTaskEx[i]->first);
+            taskEx.task.uFlags &= ~(TaskFlag::kTaskRunning);
             if (taskEx.task.eTaskType == TaskType::kRunPeriodic
                 || taskEx.uTaskExecCount < taskEx.task.uTaskExecTimes)
             {
                 uint64_t uExecTimeNs;
                 clock_get_time_nano(uExecTimeNs);
-                uExecTimeNs += taskEx.task.uIntervalUs;
+                uExecTimeNs += (taskEx.task.uIntervalUs * kMicro);
                 while (unlikely(m_mapTasks.count(uExecTimeNs)) != 0)
                 {
                     ++uExecTimeNs;
@@ -301,8 +301,7 @@ void CTaskSchedulerImpl::Run()
 
                 try
                 {
-                    auto &taskEx = m_mapTasks[uExecTimeNs];
-                    taskEx = taskEx;
+                    m_mapTasks[uExecTimeNs] = taskEx;
                 }
                 catch(std::exception &e)
                 {
@@ -310,6 +309,8 @@ void CTaskSchedulerImpl::Run()
                         m_strSchedulerName.c_str(), e.what());
                 }
             }
+            // 使用完再删除，避免taskEx引用失效
+            m_mapTasks.erase(batchTaskEx[i]->first);
         }
     }
 }
