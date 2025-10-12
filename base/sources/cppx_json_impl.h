@@ -12,7 +12,7 @@ namespace base
 class CJsonImpl final : public IJson
 {
 public:
-    CJsonImpl() = default;
+    CJsonImpl(JsonType jsonType = JsonType::kJsonTypeObject) noexcept;
     CJsonImpl(const Json::Value &&jsonValue);
     ~CJsonImpl() noexcept override;
 
@@ -35,9 +35,25 @@ public:
     int32_t SetInt(const char *pKey, int32_t iValue) noexcept override;
     int32_t SetBool(const char *pKey, bool bValue) noexcept override;
 
-    JsonStrGuard ToString(bool bPretty = false) const noexcept override;
+    IJson::JsonGuard GetObject(int32_t iIndex) const noexcept override;
+    IJson::JsonGuard GetArray(int32_t iIndex) const noexcept override;
+    const char *GetString(int32_t iIndex, const char *pDefault = nullptr) const noexcept override;
+    int32_t GetInt(int32_t iIndex, int32_t iDefault = 0) const noexcept override;
+    bool GetBool(int32_t iIndex, bool bDefault = false) const noexcept override;
 
+    int32_t AppendObject(IJson *pJson) noexcept override;
+    int32_t AppendArray(IJson *pJson) noexcept override;
+    int32_t AppendString(const char *pValue) noexcept override;
+    int32_t AppendInt(int32_t iValue) noexcept override;
+    int32_t AppendBool(bool bValue) noexcept override;
+
+    void Delete(const char *pKey) noexcept override;
+    void Clear() noexcept override;
+
+    JsonStrGuard ToString(bool bPretty = false) const noexcept override;
     JsonType GetType(const char *pKey = nullptr) const noexcept override;
+    JsonType GetType(int32_t iIndex) const noexcept override;
+    uint32_t GetSize() const noexcept override;
 
 private:
     Json::Value m_jsonValue;

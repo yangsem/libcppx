@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <cctype>
 
 #include <cppx_common.h>
 #include <cppx_last_error.h>
@@ -12,9 +13,38 @@ namespace cppx
 namespace base
 {
 
-IJson *IJson::Create() noexcept
+static IJson::JsonType GetIJsonType(Json::ValueType jsonType)
 {
-    return NEW CJsonImpl();
+    static IJson::JsonType s_jsonTypeMap[] = {
+        IJson::JsonType::kJsonTypeNull,
+        IJson::JsonType::kJsonTypeNumber,
+        IJson::JsonType::kJsonTypeNumber,
+        IJson::JsonType::kJsonTypeNull,
+        IJson::JsonType::kJsonTypeString,
+        IJson::JsonType::kJsonTypeBoolean,
+        IJson::JsonType::kJsonTypeArray,
+        IJson::JsonType::kJsonTypeObject,
+    };
+    return s_jsonTypeMap[jsonType];
+}
+
+static Json::ValueType GetJsonValueType(IJson::JsonType jsonType)
+{
+    static Json::ValueType s_jsonValueTypeMap[] = {
+        Json::ValueType::objectValue,
+        Json::ValueType::arrayValue,
+        Json::ValueType::stringValue,
+        Json::ValueType::intValue,
+        Json::ValueType::booleanValue,
+        Json::ValueType::nullValue,
+    };
+    return s_jsonValueTypeMap[(uint8_t)jsonType];
+}
+
+
+IJson *IJson::Create(JsonType jsonType) noexcept
+{
+    return NEW CJsonImpl(jsonType);
 }
 
 void IJson::Destroy(IJson *pJson) noexcept
@@ -25,9 +55,13 @@ void IJson::Destroy(IJson *pJson) noexcept
     }
 }
 
-IJson::JsonGuard IJson::CreateWithGuard() noexcept
+IJson::JsonGuard IJson::CreateWithGuard(JsonType jsonType) noexcept
 {
-    return JsonGuard(IJson::Create());
+    return JsonGuard(IJson::Create(jsonType));
+}
+
+CJsonImpl::CJsonImpl(JsonType jsonType) noexcept : m_jsonValue(GetJsonValueType(jsonType))
+{
 }
 
 CJsonImpl::CJsonImpl(const Json::Value &&jsonValue) : m_jsonValue(std::move(jsonValue))
@@ -48,14 +82,16 @@ int32_t CJsonImpl::Parse(const char *pJsonStr) noexcept
 
     try
     {
+        Json::Value jsonValue;
         Json::CharReaderBuilder builder;
         const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
         std::string errs;
-        if (unlikely(!reader->parse(pJsonStr, pJsonStr + strlen(pJsonStr), &m_jsonValue, &errs)))
+        if (unlikely(!reader->parse(pJsonStr, pJsonStr + strlen(pJsonStr), &jsonValue, &errs)))
         {
             SET_LAST_ERROR(ErrorCode::kInvalidParam, "Invalid JSON: %s", errs.c_str());
             return ErrorCode::kInvalidParam;
         }
+        m_jsonValue = std::move(jsonValue);
     }
     catch (std::exception &e)
     {
@@ -84,11 +120,13 @@ int32_t CJsonImpl::ParseFile(const char *pJsonFile) noexcept
         }
         Json::CharReaderBuilder builder;
         std::string errs;
-        if (unlikely(!Json::parseFromStream(builder, ifs, &m_jsonValue, &errs)))
+        Json::Value jsonValue;
+        if (unlikely(!Json::parseFromStream(builder, ifs, &jsonValue, &errs)))
         {
             SET_LAST_ERROR(ErrorCode::kInvalidParam, "Invalid JSON: %s", errs.c_str());
             return ErrorCode::kInvalidParam;
         }
+        m_jsonValue = std::move(jsonValue);
     }
     catch (std::exception &e)
     {
@@ -180,9 +218,9 @@ int32_t CJsonImpl::SetObject(const char *pKey, IJson *pJson) noexcept
     try
     {
         auto pCJsonImpl = dynamic_cast<CJsonImpl *>(pJson);
-        if (likely(pKey != nullptr && pCJsonImpl != nullptr))
+        if (likely(pKey != nullptr && pCJsonImpl != nullptr && pCJsonImpl->m_jsonValue.isObject()))
         {
-            m_jsonValue[pKey] = std::move(pCJsonImpl->m_jsonValue);
+            m_jsonValue[pKey] = pCJsonImpl->m_jsonValue;
         }
         else
         {
@@ -204,9 +242,9 @@ int32_t CJsonImpl::SetArray(const char *pKey, IJson *pJson) noexcept
     try
     {
         auto pCJsonImpl = dynamic_cast<CJsonImpl *>(pJson);
-        if (likely(pKey != nullptr && pCJsonImpl != nullptr))
+        if (likely(pKey != nullptr && pCJsonImpl != nullptr && pCJsonImpl->m_jsonValue.isArray()))
         {
-            m_jsonValue[pKey] = std::move(pCJsonImpl->m_jsonValue);
+            m_jsonValue[pKey] = pCJsonImpl->m_jsonValue;
         }
         else
         {
@@ -292,6 +330,197 @@ int32_t CJsonImpl::SetBool(const char *pKey, bool bValue) noexcept
     return 0;
 }
 
+IJson::JsonGuard CJsonImpl::GetObject(int32_t iIndex) const noexcept
+{
+    if (likely(m_jsonValue.isArray() 
+              && iIndex >= 0 && iIndex < (int32_t)m_jsonValue.size() 
+              && m_jsonValue[iIndex].isObject()))
+    {
+        return NEW CJsonImpl(std::move(m_jsonValue[iIndex]));
+    }
+
+    return nullptr;
+}
+
+IJson::JsonGuard CJsonImpl::GetArray(int32_t iIndex) const noexcept
+{
+    if (likely(m_jsonValue.isArray() 
+              && iIndex >= 0 && iIndex < (int32_t)m_jsonValue.size() 
+              && m_jsonValue[iIndex].isArray()))
+    {
+        return NEW CJsonImpl(std::move(m_jsonValue[iIndex]));
+    }
+
+    return nullptr; 
+}
+
+const char *CJsonImpl::GetString(int32_t iIndex, const char *pDefault) const noexcept
+
+{
+    if (likely(m_jsonValue.isArray() 
+              && iIndex >= 0 && iIndex < (int32_t)m_jsonValue.size() 
+              && m_jsonValue[iIndex].isString()))
+    {
+        return m_jsonValue[iIndex].asCString();
+    }
+
+    return pDefault;
+}
+
+int32_t CJsonImpl::GetInt(int32_t iIndex, int32_t iDefault) const noexcept
+{
+    if (likely(m_jsonValue.isArray() 
+              && iIndex >= 0 && iIndex < (int32_t)m_jsonValue.size() 
+              && m_jsonValue[iIndex].isInt()))
+    {
+        return m_jsonValue[iIndex].asInt();
+    }
+
+    return iDefault;
+}
+
+bool CJsonImpl::GetBool(int32_t iIndex, bool bDefault) const noexcept
+{
+    if (likely(m_jsonValue.isArray() 
+              && iIndex >= 0 && iIndex < (int32_t)m_jsonValue.size() 
+              && m_jsonValue[iIndex].isBool()))
+    {
+        return m_jsonValue[iIndex].asBool();
+    }
+
+    return bDefault;
+}
+
+int32_t CJsonImpl::AppendObject(IJson *pJson) noexcept
+{
+    try
+    {
+        auto pCJsonImpl = dynamic_cast<CJsonImpl *>(pJson);
+        if (likely(pCJsonImpl != nullptr && m_jsonValue.isArray() && pCJsonImpl->m_jsonValue.isObject()))
+        {
+            m_jsonValue.append(pCJsonImpl->m_jsonValue);
+        }
+        else
+        {
+            SET_LAST_ERROR(ErrorCode::kInvalidParam, "Append Object failed: Invalid parameter");
+            return ErrorCode::kInvalidParam;
+        }
+    }
+    catch (std::exception &e)
+    {
+        SET_LAST_ERROR(ErrorCode::kThrowException, "Append Object failed: %s", e.what());
+        return ErrorCode::kThrowException;
+    }
+
+    return 0;
+}
+
+int32_t CJsonImpl::AppendArray(IJson *pJson) noexcept
+{
+    try
+    {
+        auto pCJsonImpl = dynamic_cast<CJsonImpl *>(pJson);
+        if (likely(pCJsonImpl != nullptr && m_jsonValue.isArray() && pCJsonImpl->m_jsonValue.isArray()))
+        {
+            m_jsonValue.append(pCJsonImpl->m_jsonValue);
+        }
+        else
+        {
+            SET_LAST_ERROR(ErrorCode::kInvalidParam, "Append Array failed: Invalid parameter");
+            return ErrorCode::kInvalidParam;
+        }
+    }
+    catch (std::exception &e)
+    {
+        SET_LAST_ERROR(ErrorCode::kThrowException, "Append Array failed: %s", e.what());
+        return ErrorCode::kThrowException;
+    }
+
+    return 0;
+}
+
+int32_t CJsonImpl::AppendString(const char *pValue) noexcept
+{
+    try
+    {
+        if (likely(pValue != nullptr && m_jsonValue.isArray() && pValue != nullptr))
+        {
+            m_jsonValue.append(pValue);
+        }
+        else
+        {
+            SET_LAST_ERROR(ErrorCode::kInvalidParam, "Append String failed: Invalid parameter");
+            return ErrorCode::kInvalidParam;
+        }
+    }
+    catch (std::exception &e)
+    {
+        SET_LAST_ERROR(ErrorCode::kThrowException, "Append String failed: %s", e.what());
+        return ErrorCode::kThrowException;
+    }
+
+    return 0;
+}
+
+int32_t CJsonImpl::AppendInt(int32_t iValue) noexcept
+{
+    try
+    {
+        if (likely(m_jsonValue.isArray()))
+        {
+            m_jsonValue.append(iValue);
+        }
+        else
+        {
+            SET_LAST_ERROR(ErrorCode::kInvalidParam, "Append Int failed: Invalid parameter");
+            return ErrorCode::kInvalidParam;
+        }
+    }
+    catch (std::exception &e)
+    {
+        SET_LAST_ERROR(ErrorCode::kThrowException, "Append Int failed: %s", e.what());
+        return ErrorCode::kThrowException;
+    }
+
+    return 0;
+}
+
+int32_t CJsonImpl::AppendBool(bool bValue) noexcept
+{
+    try
+    {
+        if (likely(m_jsonValue.isArray()))
+        {
+            m_jsonValue.append(bValue);
+        }
+        else
+        {
+            SET_LAST_ERROR(ErrorCode::kInvalidParam, "Append Bool failed: Invalid parameter");
+            return ErrorCode::kInvalidParam;
+        }
+    }
+    catch (std::exception &e)
+    {
+        SET_LAST_ERROR(ErrorCode::kThrowException, "Append Bool failed: %s", e.what());
+        return ErrorCode::kThrowException;
+    }
+
+    return 0;
+}
+
+void CJsonImpl::Delete(const char *pKey) noexcept
+{
+    if (likely(pKey != nullptr))
+    {
+        m_jsonValue.removeMember(pKey);
+    }
+}
+
+void CJsonImpl::Clear() noexcept
+{
+    m_jsonValue.clear();
+}
+
 IJson::JsonStrGuard CJsonImpl::ToString(bool bPretty) const noexcept
 {
     try
@@ -307,9 +536,9 @@ IJson::JsonStrGuard CJsonImpl::ToString(bool bPretty) const noexcept
             else
             {
                 uint32_t i = 0;
-                for (auto ch : styledString)
+                for (const auto &ch : styledString)
                 {
-                    if (ch != ' ' && ch != '\n' && ch != '\t' && ch != '\r')
+                    if (likely(!isspace(ch)))
                     {
                         pStringBuffer[i++] = ch;
                     }
@@ -330,26 +559,32 @@ IJson::JsonStrGuard CJsonImpl::ToString(bool bPretty) const noexcept
 
 IJson::JsonType CJsonImpl::GetType(const char *pKey) const noexcept
 {
-    if (likely(pKey != nullptr && m_jsonValue.isMember(pKey)))
+    Json::ValueType jsonType = Json::ValueType::nullValue;
+    if (pKey == nullptr)
     {
-        static IJson::JsonType s_jsonTypeMap[] = {
-            IJson::JsonType::kJsonTypeNull,
-            IJson::JsonType::kJsonTypeNumber,
-            IJson::JsonType::kJsonTypeNull,
-            IJson::JsonType::kJsonTypeString,
-            IJson::JsonType::kJsonTypeBoolean,
-            IJson::JsonType::kJsonTypeArray,
-            IJson::JsonType::kJsonTypeObject,
-        };
-        
-        auto jsonType = pKey != nullptr ? m_jsonValue[pKey].type() : m_jsonValue.type();
-        if (likely(jsonType < sizeof(s_jsonTypeMap) / sizeof(s_jsonTypeMap[0])))
-        {
-            return s_jsonTypeMap[jsonType];
-        }
+        jsonType = m_jsonValue.type();
+    }
+    else if (likely(pKey != nullptr && m_jsonValue.isMember(pKey)))
+    {
+        jsonType = m_jsonValue[pKey].type();
+    }
+    
+    return GetIJsonType(jsonType);
+}
+
+IJson::JsonType CJsonImpl::GetType(int32_t iIndex) const noexcept
+{
+    if (likely(iIndex >= 0 && iIndex < (int32_t)m_jsonValue.size()) && m_jsonValue.isArray())
+    {
+        return GetIJsonType(m_jsonValue[iIndex].type());
     }
 
-    return JsonType::kJsonTypeNull;
+    return IJson::JsonType::kJsonTypeNull;
+}
+
+uint32_t CJsonImpl::GetSize() const noexcept
+{
+    return m_jsonValue.size();
 }
 
 }
