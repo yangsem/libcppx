@@ -81,3 +81,32 @@ docker: Error response from daemon: Get "https://registry-1.docker.io/v2/": cont
 Run 'docker run --help' for more information
 ```
 
+10. 失败问题解决
+
+失败是因为https://registry-1.docker.io无法正常访问，解决办法：
+
+- 需要修改 `/etc/docker.daemon.json`为国内镜像
+
+- 临时使用国内镜像，例如
+```
+docker pull docker.xuanyuan.me/library/ubuntu:20.04
+docker run -d --name ubuntu20.04 ubuntu:20.04 sleep infinity
+docker ps
+docker exec -it 1ba2b90b56cf /bin/bash
+```
+
+11. 文件复制
+
+- 使用 `docker cp` 命令
+```
+docker cp my-ubuntu:/root/test.txt .
+```
+
+- 在启动容器时，把宿主机目录挂载到容器里，这样容器内的文件直接写到宿主机：
+```
+docker run -it -v /home/yangsem/data:/data ubuntu:20.04 /bin/bash
+
+/home/yangsem/data 是宿主机目录
+/data 是容器内目录
+容器写入 /data 的文件会直接在宿主机可见
+```
