@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <thread>
-#include <thread/cppx_task_scheduler.h>
-#include <utilities/cppx_common.h>
+#include <thread/task_scheduler.h>
+#include <utilities/common.h>
 #include <chrono>
 #include <atomic>
 #include <string>
@@ -283,15 +283,13 @@ TEST_F(TaskSchedulerTest, TestGetStats)
     ASSERT_NE(pScheduler, nullptr);
     
     // 测试GetStats接口 - 调度器未启动
-    const char* stats1 = pScheduler->GetStats();
-    EXPECT_EQ(stats1, nullptr);
+    EXPECT_EQ(pScheduler->GetStats(nullptr), 0);
     
     int32_t result = pScheduler->Start();
     ASSERT_EQ(result, 0);
     
     // 测试GetStats接口 - 调度器已启动
-    const char* stats2 = pScheduler->GetStats();
-    EXPECT_EQ(stats2, nullptr);
+    EXPECT_EQ(pScheduler->GetStats(nullptr), 0);
     
     // 投递一些任务
     pScheduler->PostOnceTask("Task1", TestTaskFunc, this, 0);
@@ -301,8 +299,7 @@ TEST_F(TaskSchedulerTest, TestGetStats)
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     
     // 再次获取统计信息
-    const char* stats3 = pScheduler->GetStats();
-    EXPECT_EQ(stats3, nullptr);
+    EXPECT_EQ(pScheduler->GetStats(nullptr), 0);
     
     pScheduler->Stop();
     ITaskScheduler::Destroy(pScheduler);

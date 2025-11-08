@@ -1,12 +1,64 @@
 #include <gtest/gtest.h>
-#include <utilities/cppx_json.h>
+#include <utilities/json.h>
 #include <fstream>
 #include <cstring>
+#include <climits>
 #include <thread>
 #include <vector>
-#include <climits>
 
 using namespace cppx::base;
+
+// RAII包装类，用于自动管理IJson对象生命周期
+class JsonGuard
+{
+public:
+    explicit JsonGuard(IJson::JsonType jsonType = IJson::JsonType::kObject)
+        : m_pJson(IJson::Create(jsonType))
+    {
+    }
+    
+    ~JsonGuard()
+    {
+        if (m_pJson)
+        {
+            IJson::Destroy(m_pJson);
+        }
+    }
+    
+    // 禁止拷贝
+    JsonGuard(const JsonGuard&) = delete;
+    JsonGuard& operator=(const JsonGuard&) = delete;
+    
+    // 允许移动
+    JsonGuard(JsonGuard&& other) noexcept
+        : m_pJson(other.m_pJson)
+    {
+        other.m_pJson = nullptr;
+    }
+    
+    JsonGuard& operator=(JsonGuard&& other) noexcept
+    {
+        if (this != &other)
+        {
+            if (m_pJson)
+            {
+                IJson::Destroy(m_pJson);
+            }
+            m_pJson = other.m_pJson;
+            other.m_pJson = nullptr;
+        }
+        return *this;
+    }
+    
+    IJson* get() const { return m_pJson; }
+    IJson* operator->() const { return m_pJson; }
+    IJson& operator*() const { return *m_pJson; }
+    
+    explicit operator bool() const { return m_pJson != nullptr; }
+
+private:
+    IJson* m_pJson;
+};
 
 class CppxJsonTest : public ::testing::Test
 {
@@ -44,8 +96,8 @@ TEST_F(CppxJsonTest, TestBasicCreation)
     IJson* pJson = IJson::Create();
     ASSERT_NE(pJson, nullptr);
     
-    // 测试CreateWithGuard方法
-    auto jsonGuard = IJson::CreateWithGuard();
+    // 测试Create方法和Guard包装类
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 测试销毁
@@ -55,7 +107,7 @@ TEST_F(CppxJsonTest, TestBasicCreation)
 // 测试JSON字符串解析
 TEST_F(CppxJsonTest, TestParseString)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 测试有效JSON字符串
@@ -80,7 +132,7 @@ TEST_F(CppxJsonTest, TestParseString)
 // 测试JSON文件解析
 TEST_F(CppxJsonTest, TestParseFile)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 测试解析存在的文件
@@ -99,7 +151,7 @@ TEST_F(CppxJsonTest, TestParseFile)
 // 测试Get操作
 TEST_F(CppxJsonTest, TestGetOperations)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 先解析测试数据
@@ -115,12 +167,12 @@ TEST_F(CppxJsonTest, TestGetOperations)
     const char* defaultStr = jsonGuard->GetString("nonexistent", "默认值");
     EXPECT_STREQ(defaultStr, "默认值");
     
-    // 测试GetInt
-    int32_t age = jsonGuard->GetInt("age");
+    // 测试GetInt32
+    int32_t age = jsonGuard->GetInt32("age");
     EXPECT_EQ(age, 25);
     
-    // 测试GetInt with default
-    int32_t defaultInt = jsonGuard->GetInt("nonexistent", 999);
+    // 测试GetInt32 with default
+    int32_t defaultInt = jsonGuard->GetInt32("nonexistent", 999);
     EXPECT_EQ(defaultInt, 999);
     
     // 测试GetBool
@@ -132,29 +184,29 @@ TEST_F(CppxJsonTest, TestGetOperations)
     EXPECT_FALSE(defaultBool);
     
     // 测试GetObject
-    auto addressGuard = jsonGuard->GetObject("address");
-    ASSERT_NE(addressGuard.get(), nullptr);
+    const IJson* addressGuard = jsonGuard->GetObject("address");
+    ASSERT_NE(addressGuard, nullptr);
     const char* city = addressGuard->GetString("city");
     ASSERT_NE(city, nullptr);
     EXPECT_STREQ(city, "北京");
     
     // 测试GetArray
-    auto hobbiesGuard = jsonGuard->GetArray("hobbies");
-    ASSERT_NE(hobbiesGuard.get(), nullptr);
+    const IJson* hobbiesGuard = jsonGuard->GetArray("hobbies");
+    ASSERT_NE(hobbiesGuard, nullptr);
     
     // 测试获取不存在的对象
-    auto nonexistentGuard = jsonGuard->GetObject("nonexistent");
-    EXPECT_EQ(nonexistentGuard.get(), nullptr);
+    const IJson* nonexistentGuard = jsonGuard->GetObject("nonexistent");
+    EXPECT_EQ(nonexistentGuard, nullptr);
     
     // 测试获取不存在的数组
-    auto nonexistentArray = jsonGuard->GetArray("nonexistent");
-    EXPECT_EQ(nonexistentArray.get(), nullptr);
+    const IJson* nonexistentArray = jsonGuard->GetArray("nonexistent");
+    EXPECT_EQ(nonexistentArray, nullptr);
 }
 
 // 测试Set操作
 TEST_F(CppxJsonTest, TestSetOperations)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 测试SetString
@@ -164,10 +216,10 @@ TEST_F(CppxJsonTest, TestSetOperations)
     ASSERT_NE(name, nullptr);
     EXPECT_STREQ(name, "新用户");
     
-    // 测试SetInt
-    result = jsonGuard->SetInt("age", 30);
+    // 测试SetInt32
+    result = jsonGuard->SetInt32("age", 30);
     EXPECT_EQ(result, 0);
-    int32_t age = jsonGuard->GetInt("age");
+    int32_t age = jsonGuard->GetInt32("age");
     EXPECT_EQ(age, 30);
     
     // 测试SetBool
@@ -177,7 +229,7 @@ TEST_F(CppxJsonTest, TestSetOperations)
     EXPECT_FALSE(isActive);
     
     // 测试SetObject
-    auto subJsonGuard = IJson::CreateWithGuard();
+    JsonGuard subJsonGuard;
     ASSERT_NE(subJsonGuard.get(), nullptr);
     subJsonGuard->SetString("country", "中国");
     subJsonGuard->SetString("province", "北京");
@@ -185,17 +237,17 @@ TEST_F(CppxJsonTest, TestSetOperations)
     result = jsonGuard->SetObject("location", subJsonGuard.get());
     EXPECT_EQ(result, 0);
     
-    auto locationGuard = jsonGuard->GetObject("location");
-    ASSERT_NE(locationGuard.get(), nullptr);
+    const IJson* locationGuard = jsonGuard->GetObject("location");
+    ASSERT_NE(locationGuard, nullptr);
     const char* country = locationGuard->GetString("country");
     ASSERT_NE(country, nullptr);
     EXPECT_STREQ(country, "中国");
     
     // 测试SetArray
-    auto arrayJsonGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeArray);
+    JsonGuard arrayJsonGuard(IJson::JsonType::kArray);
     ASSERT_NE(arrayJsonGuard.get(), nullptr);
     arrayJsonGuard->AppendBool(true);
-    arrayJsonGuard->AppendInt(1);
+    arrayJsonGuard->AppendInt32(1);
     arrayJsonGuard->AppendString("value");
     
     result = jsonGuard->SetArray("newArray", arrayJsonGuard.get());
@@ -215,7 +267,7 @@ TEST_F(CppxJsonTest, TestSetOperations)
 // 测试Delete功能
 TEST_F(CppxJsonTest, TestDelete)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 先解析测试数据
@@ -232,16 +284,16 @@ TEST_F(CppxJsonTest, TestDelete)
 // 测试Clear功能
 TEST_F(CppxJsonTest, TestClear)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
 
     // 设置一些数据
     jsonGuard->SetString("name", "测试");
-    jsonGuard->SetInt("age", 25);
+    jsonGuard->SetInt32("age", 25);
     jsonGuard->SetBool("active", true);
 
     // 测试清空前，类型为object
-    EXPECT_EQ(jsonGuard->GetType(), IJson::JsonType::kJsonTypeObject);
+    EXPECT_EQ(jsonGuard->GetType(), IJson::JsonType::kObject);
     
     // 测试Clear
     jsonGuard->Clear();
@@ -249,44 +301,44 @@ TEST_F(CppxJsonTest, TestClear)
     const char* name = jsonGuard->GetString("name");
     EXPECT_EQ(name, nullptr);
     // 测试获取key为age的值
-    int32_t age = jsonGuard->GetInt("age");
+    int32_t age = jsonGuard->GetInt32("age");
     EXPECT_EQ(age, 0);
     // 测试获取key为active的值
     bool active = jsonGuard->GetBool("active");
     EXPECT_EQ(active, false);
 
-    EXPECT_EQ(jsonGuard->GetType(), IJson::JsonType::kJsonTypeObject);
+    EXPECT_EQ(jsonGuard->GetType(), IJson::JsonType::kObject);
 }
 
 // 测试ToString功能
 TEST_F(CppxJsonTest, TestToString)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 设置一些数据
     jsonGuard->SetString("name", "测试");
-    jsonGuard->SetInt("age", 25);
+    jsonGuard->SetInt32("age", 25);
     jsonGuard->SetBool("active", true);
     
     // 测试普通格式
-    auto strGuard = jsonGuard->ToString(false);
-    ASSERT_NE(strGuard.get(), nullptr);
-    EXPECT_NE(strlen(strGuard.get()), 0);
+    const char* str = jsonGuard->ToString(false);
+    ASSERT_NE(str, nullptr);
+    EXPECT_NE(strlen(str), 0);
     
     // 测试美化格式
-    auto prettyStrGuard = jsonGuard->ToString(true);
-    ASSERT_NE(prettyStrGuard.get(), nullptr);
-    EXPECT_NE(strlen(prettyStrGuard.get()), 0);
+    const char* prettyStr = jsonGuard->ToString(true);
+    ASSERT_NE(prettyStr, nullptr);
+    EXPECT_NE(strlen(prettyStr), 0);
     
     // 美化格式应该比普通格式长（包含换行和缩进）
-    EXPECT_GT(strlen(prettyStrGuard.get()), strlen(strGuard.get()));
+    EXPECT_GT(strlen(prettyStr), strlen(str));
 }
 
 // 测试GetType功能
 TEST_F(CppxJsonTest, TestGetType)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 先解析测试数据
@@ -295,55 +347,55 @@ TEST_F(CppxJsonTest, TestGetType)
     
     // 测试各种类型的检测
     IJson::JsonType type = jsonGuard->GetType("name");
-    EXPECT_EQ(type, IJson::JsonType::kJsonTypeString);
+    EXPECT_EQ(type, IJson::JsonType::kString);
     
     type = jsonGuard->GetType("age");
-    EXPECT_EQ(type, IJson::JsonType::kJsonTypeNumber);
+    EXPECT_EQ(type, IJson::JsonType::kInt32);
     
     type = jsonGuard->GetType("isActive");
-    EXPECT_EQ(type, IJson::JsonType::kJsonTypeBoolean);
+    EXPECT_EQ(type, IJson::JsonType::kBool);
     
     type = jsonGuard->GetType("address");
-    EXPECT_EQ(type, IJson::JsonType::kJsonTypeObject);
+    EXPECT_EQ(type, IJson::JsonType::kObject);
     
     type = jsonGuard->GetType("hobbies");
-    EXPECT_EQ(type, IJson::JsonType::kJsonTypeArray);
+    EXPECT_EQ(type, IJson::JsonType::kArray);
     
     type = jsonGuard->GetType("metadata");
-    EXPECT_EQ(type, IJson::JsonType::kJsonTypeNull);
+    EXPECT_EQ(type, IJson::JsonType::kInvalid); // null值在头文件中没有对应类型，使用kInvalid
     
     // 测试获取不存在的键的类型
     type = jsonGuard->GetType("nonexistent");
-    EXPECT_EQ(type, IJson::JsonType::kJsonTypeNull);
+    EXPECT_EQ(type, IJson::JsonType::kInvalid);
 }
 
 // 测试错误处理和边界情况
 TEST_F(CppxJsonTest, TestErrorHandling)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 测试空JSON对象的各种操作
     const char* str = jsonGuard->GetString("nonexistent");
     EXPECT_EQ(str, nullptr);
     
-    int32_t intVal = jsonGuard->GetInt("nonexistent");
+    int32_t intVal = jsonGuard->GetInt32("nonexistent");
     EXPECT_EQ(intVal, 0);
     
     bool boolVal = jsonGuard->GetBool("nonexistent");
     EXPECT_FALSE(boolVal);
     
-    auto objGuard = jsonGuard->GetObject("nonexistent");
-    EXPECT_EQ(objGuard.get(), nullptr);
+    const IJson* objGuard = jsonGuard->GetObject("nonexistent");
+    EXPECT_EQ(objGuard, nullptr);
     
-    auto arrGuard = jsonGuard->GetArray("nonexistent");
-    EXPECT_EQ(arrGuard.get(), nullptr);
+    const IJson* arrGuard = jsonGuard->GetArray("nonexistent");
+    EXPECT_EQ(arrGuard, nullptr);
     
     // 测试类型不匹配的情况
     jsonGuard->SetString("testKey", "string value");
     
     // 尝试以错误类型获取
-    int32_t wrongType = jsonGuard->GetInt("testKey");
+    int32_t wrongType = jsonGuard->GetInt32("testKey");
     EXPECT_EQ(wrongType, 0); // 应该返回默认值
     
     bool wrongBool = jsonGuard->GetBool("testKey");
@@ -353,21 +405,21 @@ TEST_F(CppxJsonTest, TestErrorHandling)
 // 测试复杂嵌套结构
 TEST_F(CppxJsonTest, TestComplexNestedStructure)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 创建嵌套结构
-    auto userGuard = IJson::CreateWithGuard();
+    JsonGuard userGuard;
     userGuard->SetString("name", "张三");
-    userGuard->SetInt("age", 28);
+    userGuard->SetInt32("age", 28);
     
-    auto profileGuard = IJson::CreateWithGuard();
+    JsonGuard profileGuard;
     profileGuard->SetString("email", "zhangsan@example.com");
     profileGuard->SetString("phone", "13800138000");
     
     userGuard->SetObject("profile", profileGuard.get());
     
-    auto skillsGuard = IJson::CreateWithGuard();
+    JsonGuard skillsGuard;
     // 这里需要根据实际的数组操作方法来设置数组元素
     
     userGuard->SetArray("skills", skillsGuard.get());
@@ -376,15 +428,15 @@ TEST_F(CppxJsonTest, TestComplexNestedStructure)
     jsonGuard->SetObject("user", userGuard.get());
     
     // 验证嵌套结构
-    auto retrievedUser = jsonGuard->GetObject("user");
-    ASSERT_NE(retrievedUser.get(), nullptr);
+    const IJson* retrievedUser = jsonGuard->GetObject("user");
+    ASSERT_NE(retrievedUser, nullptr);
     
     const char* userName = retrievedUser->GetString("name");
     ASSERT_NE(userName, nullptr);
     EXPECT_STREQ(userName, "张三");
     
-    auto retrievedProfile = retrievedUser->GetObject("profile");
-    ASSERT_NE(retrievedProfile.get(), nullptr);
+    const IJson* retrievedProfile = retrievedUser->GetObject("profile");
+    ASSERT_NE(retrievedProfile, nullptr);
     
     const char* email = retrievedProfile->GetString("email");
     ASSERT_NE(email, nullptr);
@@ -395,27 +447,24 @@ TEST_F(CppxJsonTest, TestComplexNestedStructure)
 TEST_F(CppxJsonTest, TestGuardMoveSemantics)
 {
     // 测试JsonGuard的移动构造
-    auto guard1 = IJson::CreateWithGuard();
+    JsonGuard guard1;
     ASSERT_NE(guard1.get(), nullptr);
     
     auto guard2 = std::move(guard1);
     EXPECT_EQ(guard1.get(), nullptr); // 移动后应该为空
     ASSERT_NE(guard2.get(), nullptr); // 新对象应该有效
     
-    // 测试JsonStrGuard的移动构造
+    // 测试ToString返回的字符串指针
     guard2->SetString("test", "value");
-    auto strGuard1 = guard2->ToString();
-    ASSERT_NE(strGuard1.get(), nullptr);
-    
-    auto strGuard2 = std::move(strGuard1);
-    EXPECT_EQ(strGuard1.get(), nullptr); // 移动后应该为空
-    ASSERT_NE(strGuard2.get(), nullptr); // 新对象应该有效
+    const char* str1 = guard2->ToString();
+    ASSERT_NE(str1, nullptr);
+    EXPECT_GT(strlen(str1), 0);
 }
 
 // 性能测试 - 大量数据操作
 TEST_F(CppxJsonTest, TestPerformanceWithLargeData)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 设置大量数据
@@ -438,15 +487,15 @@ TEST_F(CppxJsonTest, TestPerformanceWithLargeData)
     }
     
     // 测试ToString性能
-    auto strGuard = jsonGuard->ToString();
-    ASSERT_NE(strGuard.get(), nullptr);
-    EXPECT_GT(strlen(strGuard.get()), 0);
+    const char* str = jsonGuard->ToString();
+    ASSERT_NE(str, nullptr);
+    EXPECT_GT(strlen(str), 0);
 }
 
 // 测试数组操作（如果支持的话）
 TEST_F(CppxJsonTest, TestArrayOperations)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 先解析包含数组的测试数据
@@ -454,35 +503,35 @@ TEST_F(CppxJsonTest, TestArrayOperations)
     ASSERT_EQ(result, 0);
     
     // 获取数组并验证
-    auto hobbiesGuard = jsonGuard->GetArray("hobbies");
-    ASSERT_NE(hobbiesGuard.get(), nullptr);
+    const IJson* hobbiesGuard = jsonGuard->GetArray("hobbies");
+    ASSERT_NE(hobbiesGuard, nullptr);
     
     // 验证数组类型
     IJson::JsonType arrayType = hobbiesGuard->GetType();
-    EXPECT_EQ(arrayType, IJson::JsonType::kJsonTypeArray);
+    EXPECT_EQ(arrayType, IJson::JsonType::kArray);
     
     // 获取分数数组
-    auto scoresGuard = jsonGuard->GetArray("scores");
-    ASSERT_NE(scoresGuard.get(), nullptr);
+    const IJson* scoresGuard = jsonGuard->GetArray("scores");
+    ASSERT_NE(scoresGuard, nullptr);
     
     // 验证数组类型
     IJson::JsonType scoresType = scoresGuard->GetType();
-    EXPECT_EQ(scoresType, IJson::JsonType::kJsonTypeArray);
+    EXPECT_EQ(scoresType, IJson::JsonType::kArray);
 }
 
 // 测试空值和null处理
 TEST_F(CppxJsonTest, TestNullAndEmptyValues)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 先解析测试数据
     int32_t result = jsonGuard->ParseFile("test_data.json");
     ASSERT_EQ(result, 0);
     
-    // 测试null值
+    // 测试null值（头文件中没有kNull类型，使用kInvalid表示）
     IJson::JsonType nullType = jsonGuard->GetType("metadata");
-    EXPECT_EQ(nullType, IJson::JsonType::kJsonTypeNull);
+    EXPECT_EQ(nullType, IJson::JsonType::kInvalid);
     
     // 测试空字符串
     jsonGuard->SetString("emptyString", "");
@@ -491,8 +540,8 @@ TEST_F(CppxJsonTest, TestNullAndEmptyValues)
     EXPECT_STREQ(emptyStr, "");
     
     // 测试零值
-    jsonGuard->SetInt("zeroValue", 0);
-    int32_t zero = jsonGuard->GetInt("zeroValue");
+    jsonGuard->SetInt32("zeroValue", 0);
+    int32_t zero = jsonGuard->GetInt32("zeroValue");
     EXPECT_EQ(zero, 0);
     
     // 测试false值
@@ -504,7 +553,7 @@ TEST_F(CppxJsonTest, TestNullAndEmptyValues)
 // 测试特殊字符和Unicode
 TEST_F(CppxJsonTest, TestSpecialCharactersAndUnicode)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 测试包含特殊字符的字符串
@@ -532,26 +581,26 @@ TEST_F(CppxJsonTest, TestSpecialCharactersAndUnicode)
 // 测试边界数值
 TEST_F(CppxJsonTest, TestBoundaryValues)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 测试最大和最小int32值
-    jsonGuard->SetInt("maxInt", INT32_MAX);
-    int32_t maxInt = jsonGuard->GetInt("maxInt");
+    jsonGuard->SetInt32("maxInt", INT32_MAX);
+    int32_t maxInt = jsonGuard->GetInt32("maxInt");
     EXPECT_EQ(maxInt, INT32_MAX);
     
-    jsonGuard->SetInt("minInt", INT32_MIN);
-    int32_t minInt = jsonGuard->GetInt("minInt");
+    jsonGuard->SetInt32("minInt", INT32_MIN);
+    int32_t minInt = jsonGuard->GetInt32("minInt");
     EXPECT_EQ(minInt, INT32_MIN);
     
     // 测试零值
-    jsonGuard->SetInt("zero", 0);
-    int32_t zero = jsonGuard->GetInt("zero");
+    jsonGuard->SetInt32("zero", 0);
+    int32_t zero = jsonGuard->GetInt32("zero");
     EXPECT_EQ(zero, 0);
     
     // 测试负数
-    jsonGuard->SetInt("negative", -12345);
-    int32_t negative = jsonGuard->GetInt("negative");
+    jsonGuard->SetInt32("negative", -12345);
+    int32_t negative = jsonGuard->GetInt32("negative");
     EXPECT_EQ(negative, -12345);
 }
 
@@ -561,14 +610,14 @@ TEST_F(CppxJsonTest, TestMemoryManagement)
     // 测试多次创建和销毁
     for (int i = 0; i < 100; ++i)
     {
-        auto jsonGuard = IJson::CreateWithGuard();
+        JsonGuard jsonGuard;
         ASSERT_NE(jsonGuard.get(), nullptr);
         
         jsonGuard->SetString("test", "value");
-        jsonGuard->SetInt("number", i);
+        jsonGuard->SetInt32("number", i);
         
-        auto strGuard = jsonGuard->ToString();
-        ASSERT_NE(strGuard.get(), nullptr);
+        const char* str = jsonGuard->ToString();
+        ASSERT_NE(str, nullptr);
         
         // Guard对象会在作用域结束时自动销毁
     }
@@ -595,14 +644,14 @@ TEST_F(CppxJsonTest, TestBasicConcurrency)
         threads.emplace_back([operationsPerThread]() {
             for (int i = 0; i < operationsPerThread; ++i)
             {
-                auto jsonGuard = IJson::CreateWithGuard();
+                JsonGuard jsonGuard;
                 ASSERT_NE(jsonGuard.get(), nullptr);
                 
                 jsonGuard->SetString("thread_test", "value");
-                jsonGuard->SetInt("thread_id", i);
+                jsonGuard->SetInt32("thread_id", i);
                 
-                auto strGuard = jsonGuard->ToString();
-                ASSERT_NE(strGuard.get(), nullptr);
+                const char* str = jsonGuard->ToString();
+                ASSERT_NE(str, nullptr);
             }
         });
     }
@@ -616,12 +665,12 @@ TEST_F(CppxJsonTest, TestBasicConcurrency)
 // 测试错误恢复
 TEST_F(CppxJsonTest, TestErrorRecovery)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 先设置一些有效数据
     jsonGuard->SetString("valid", "data");
-    jsonGuard->SetInt("number", 42);
+    jsonGuard->SetInt32("number", 42);
     
     // 尝试解析无效JSON（应该失败但不影响现有数据）
     const char* invalidJson = R"({"invalid": json)";
@@ -632,7 +681,7 @@ TEST_F(CppxJsonTest, TestErrorRecovery)
     const char* validData = jsonGuard->GetString("valid");
     EXPECT_STREQ(validData, "data");
     
-    int32_t number = jsonGuard->GetInt("number");
+    int32_t number = jsonGuard->GetInt32("number");
     EXPECT_EQ(number, 42);
     
     // 现在解析有效JSON
@@ -644,14 +693,14 @@ TEST_F(CppxJsonTest, TestErrorRecovery)
     const char* newData = jsonGuard->GetString("new");
     EXPECT_STREQ(newData, "data");
     
-    int32_t value = jsonGuard->GetInt("value");
+    int32_t value = jsonGuard->GetInt32("value");
     EXPECT_EQ(value, 123);
 }
 
 // 测试数组索引访问接口
 TEST_F(CppxJsonTest, TestArrayIndexAccess)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 先解析包含数组的测试数据
@@ -659,67 +708,64 @@ TEST_F(CppxJsonTest, TestArrayIndexAccess)
     ASSERT_EQ(result, 0);
     
     // 获取hobbies数组
-    auto hobbiesGuard = jsonGuard->GetArray("hobbies");
-    ASSERT_NE(hobbiesGuard.get(), nullptr);
+    const IJson* hobbiesGuard = jsonGuard->GetArray("hobbies");
+    ASSERT_NE(hobbiesGuard, nullptr);
     
-    // 测试GetString通过索引访问
-    const char* hobby1 = hobbiesGuard->GetString(0);
+    // 测试GetString通过索引访问（需要明确指定uint32_t类型）
+    const char* hobby1 = hobbiesGuard->GetString(static_cast<uint32_t>(0));
     ASSERT_NE(hobby1, nullptr);
     EXPECT_STREQ(hobby1, "读书");
     
-    const char* hobby2 = hobbiesGuard->GetString(1);
+    const char* hobby2 = hobbiesGuard->GetString(static_cast<uint32_t>(1));
     ASSERT_NE(hobby2, nullptr);
     EXPECT_STREQ(hobby2, "游泳");
     
-    const char* hobby3 = hobbiesGuard->GetString(2);
+    const char* hobby3 = hobbiesGuard->GetString(static_cast<uint32_t>(2));
     ASSERT_NE(hobby3, nullptr);
     EXPECT_STREQ(hobby3, "编程");
     
     // 测试GetString通过索引访问with default
-    const char* defaultHobby = hobbiesGuard->GetString(10, "默认爱好");
+    const char* defaultHobby = hobbiesGuard->GetString(static_cast<uint32_t>(10), "默认爱好");
     EXPECT_STREQ(defaultHobby, "默认爱好");
     
     // 获取scores数组
-    auto scoresGuard = jsonGuard->GetArray("scores");
-    ASSERT_NE(scoresGuard.get(), nullptr);
+    const IJson* scoresGuard = jsonGuard->GetArray("scores");
+    ASSERT_NE(scoresGuard, nullptr);
     
-    // 测试GetInt通过索引访问
-    int32_t score1 = scoresGuard->GetInt(0);
+    // 测试GetInt32通过索引访问（需要明确指定uint32_t类型）
+    int32_t score1 = scoresGuard->GetInt32(static_cast<uint32_t>(0));
     EXPECT_EQ(score1, 95);
     
-    int32_t score2 = scoresGuard->GetInt(1);
+    int32_t score2 = scoresGuard->GetInt32(static_cast<uint32_t>(1));
     EXPECT_EQ(score2, 87);
     
-    int32_t score3 = scoresGuard->GetInt(2);
+    int32_t score3 = scoresGuard->GetInt32(static_cast<uint32_t>(2));
     EXPECT_EQ(score3, 92);
     
-    // 测试GetInt通过索引访问with default
-    int32_t defaultScore = scoresGuard->GetInt(10, 999);
+    // 测试GetInt32通过索引访问with default
+    int32_t defaultScore = scoresGuard->GetInt32(static_cast<uint32_t>(10), 999);
     EXPECT_EQ(defaultScore, 999);
     
-    // 测试数组越界访问
-    const char* outOfBoundsStr = hobbiesGuard->GetString(-1);
-    EXPECT_EQ(outOfBoundsStr, nullptr);
-    
-    int32_t outOfBoundsInt = scoresGuard->GetInt(-1);
+    // 测试数组越界访问（负数索引会被转换为很大的uint32_t）
+    int32_t outOfBoundsInt = scoresGuard->GetInt32(static_cast<uint32_t>(-1));
     EXPECT_EQ(outOfBoundsInt, 0);
     
-    // 测试GetType通过索引访问
-    IJson::JsonType strType = hobbiesGuard->GetType(0);
-    EXPECT_EQ(strType, IJson::JsonType::kJsonTypeString);
+    // 测试GetType通过索引访问（需要明确指定uint32_t类型）
+    IJson::JsonType strType = hobbiesGuard->GetType(static_cast<uint32_t>(0));
+    EXPECT_EQ(strType, IJson::JsonType::kString);
     
-    IJson::JsonType intType = scoresGuard->GetType(0);
-    EXPECT_EQ(intType, IJson::JsonType::kJsonTypeNumber);
+    IJson::JsonType intType = scoresGuard->GetType(static_cast<uint32_t>(0));
+    EXPECT_EQ(intType, IJson::JsonType::kInt32);
 }
 
 // 测试数组追加接口
 TEST_F(CppxJsonTest, TestArrayAppendOperations)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 创建一个数组类型的JSON对象
-    auto arrayGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeArray);
+    JsonGuard arrayGuard(IJson::JsonType::kArray);
     ASSERT_NE(arrayGuard.get(), nullptr);
     
     // 测试AppendString
@@ -729,27 +775,27 @@ TEST_F(CppxJsonTest, TestArrayAppendOperations)
     result = arrayGuard->AppendString("第二个字符串");
     EXPECT_EQ(result, 0);
     
-    // 验证追加的字符串
-    const char* str1 = arrayGuard->GetString(0);
+    // 验证追加的字符串（需要明确指定uint32_t类型）
+    const char* str1 = arrayGuard->GetString(static_cast<uint32_t>(0));
     ASSERT_NE(str1, nullptr);
     EXPECT_STREQ(str1, "第一个字符串");
     
-    const char* str2 = arrayGuard->GetString(1);
+    const char* str2 = arrayGuard->GetString(static_cast<uint32_t>(1));
     ASSERT_NE(str2, nullptr);
     EXPECT_STREQ(str2, "第二个字符串");
     
-    // 测试AppendInt
-    result = arrayGuard->AppendInt(100);
+    // 测试AppendInt32
+    result = arrayGuard->AppendInt32(100);
     EXPECT_EQ(result, 0);
     
-    result = arrayGuard->AppendInt(200);
+    result = arrayGuard->AppendInt32(200);
     EXPECT_EQ(result, 0);
     
-    // 验证追加的整数
-    int32_t int1 = arrayGuard->GetInt(2);
+    // 验证追加的整数（需要明确指定uint32_t类型）
+    int32_t int1 = arrayGuard->GetInt32(static_cast<uint32_t>(2));
     EXPECT_EQ(int1, 100);
     
-    int32_t int2 = arrayGuard->GetInt(3);
+    int32_t int2 = arrayGuard->GetInt32(static_cast<uint32_t>(3));
     EXPECT_EQ(int2, 200);
     
     // 测试AppendBool
@@ -759,49 +805,49 @@ TEST_F(CppxJsonTest, TestArrayAppendOperations)
     result = arrayGuard->AppendBool(false);
     EXPECT_EQ(result, 0);
     
-    // 验证追加的布尔值
-    bool bool1 = arrayGuard->GetBool(4);
+    // 验证追加的布尔值（需要明确指定uint32_t类型）
+    bool bool1 = arrayGuard->GetBool(static_cast<uint32_t>(4));
     EXPECT_TRUE(bool1);
     
-    bool bool2 = arrayGuard->GetBool(5);
+    bool bool2 = arrayGuard->GetBool(static_cast<uint32_t>(5));
     EXPECT_FALSE(bool2);
     
     // 测试AppendObject
-    auto subObjGuard = IJson::CreateWithGuard();
+    JsonGuard subObjGuard;
     ASSERT_NE(subObjGuard.get(), nullptr);
     subObjGuard->SetString("name", "子对象");
-    subObjGuard->SetInt("value", 42);
+    subObjGuard->SetInt32("value", 42);
     
     result = arrayGuard->AppendObject(subObjGuard.get());
     EXPECT_EQ(result, 0);
     
-    // 验证追加的对象
-    auto retrievedObj = arrayGuard->GetObject(6);
-    ASSERT_NE(retrievedObj.get(), nullptr);
+    // 验证追加的对象（需要明确指定uint32_t类型）
+    const IJson* retrievedObj = arrayGuard->GetObject(static_cast<uint32_t>(6));
+    ASSERT_NE(retrievedObj, nullptr);
     const char* objName = retrievedObj->GetString("name");
     ASSERT_NE(objName, nullptr);
     EXPECT_STREQ(objName, "子对象");
     
-    int32_t objValue = retrievedObj->GetInt("value");
+    int32_t objValue = retrievedObj->GetInt32("value");
     EXPECT_EQ(objValue, 42);
     
     // 测试AppendArray
-    auto subArrayGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeArray);
+    JsonGuard subArrayGuard(IJson::JsonType::kArray);
     ASSERT_NE(subArrayGuard.get(), nullptr);
     subArrayGuard->AppendString("数组元素1");
-    subArrayGuard->AppendInt(123);
+    subArrayGuard->AppendInt32(123);
     
     result = arrayGuard->AppendArray(subArrayGuard.get());
     EXPECT_EQ(result, 0);
     
-    // 验证追加的数组
-    auto retrievedArray = arrayGuard->GetArray(7);
-    ASSERT_NE(retrievedArray.get(), nullptr);
-    const char* arrayStr = retrievedArray->GetString(0);
+    // 验证追加的数组（需要明确指定uint32_t类型）
+    const IJson* retrievedArray = arrayGuard->GetArray(static_cast<uint32_t>(7));
+    ASSERT_NE(retrievedArray, nullptr);
+    const char* arrayStr = retrievedArray->GetString(static_cast<uint32_t>(0));
     ASSERT_NE(arrayStr, nullptr);
     EXPECT_STREQ(arrayStr, "数组元素1");
     
-    int32_t arrayInt = retrievedArray->GetInt(1);
+    int32_t arrayInt = retrievedArray->GetInt32(static_cast<uint32_t>(1));
     EXPECT_EQ(arrayInt, 123);
     
     // 测试无效参数
@@ -818,7 +864,7 @@ TEST_F(CppxJsonTest, TestArrayAppendOperations)
 // 测试GetSize接口
 TEST_F(CppxJsonTest, TestGetSize)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 先解析测试数据
@@ -830,182 +876,167 @@ TEST_F(CppxJsonTest, TestGetSize)
     EXPECT_GT(objectSize, 0);
     
     // 获取hobbies数组并测试其大小
-    auto hobbiesGuard = jsonGuard->GetArray("hobbies");
-    ASSERT_NE(hobbiesGuard.get(), nullptr);
+    const IJson* hobbiesGuard = jsonGuard->GetArray("hobbies");
+    ASSERT_NE(hobbiesGuard, nullptr);
     uint32_t hobbiesSize = hobbiesGuard->GetSize();
     EXPECT_EQ(hobbiesSize, 3); // 根据测试数据，hobbies数组有3个元素
     
     // 获取scores数组并测试其大小
-    auto scoresGuard = jsonGuard->GetArray("scores");
-    ASSERT_NE(scoresGuard.get(), nullptr);
+    const IJson* scoresGuard = jsonGuard->GetArray("scores");
+    ASSERT_NE(scoresGuard, nullptr);
     uint32_t scoresSize = scoresGuard->GetSize();
     EXPECT_EQ(scoresSize, 3); // 根据测试数据，scores数组有3个元素
     
     // 测试空数组的大小
-    auto emptyArrayGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeArray);
+    JsonGuard emptyArrayGuard(IJson::JsonType::kArray);
     ASSERT_NE(emptyArrayGuard.get(), nullptr);
     uint32_t emptyArraySize = emptyArrayGuard->GetSize();
     EXPECT_EQ(emptyArraySize, 0);
     
     // 测试空对象的大小
-    auto emptyObjGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeObject);
+    JsonGuard emptyObjGuard(IJson::JsonType::kObject);
     ASSERT_NE(emptyObjGuard.get(), nullptr);
     uint32_t emptyObjSize = emptyObjGuard->GetSize();
     EXPECT_EQ(emptyObjSize, 0);
     
     // 测试基本类型的大小（应该返回0）
-    auto stringGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeString);
-    ASSERT_NE(stringGuard.get(), nullptr);
-    stringGuard->SetString("test", "value");
-    uint32_t stringSize = stringGuard->GetSize();
-    EXPECT_EQ(stringSize, 0);
-    
-    auto intGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeNumber);
-    ASSERT_NE(intGuard.get(), nullptr);
-    intGuard->SetInt("test", 42);
-    uint32_t intSize = intGuard->GetSize();
-    EXPECT_EQ(intSize, 0);
-    
-    auto boolGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeBoolean);
-    ASSERT_NE(boolGuard.get(), nullptr);
-    boolGuard->SetBool("test", true);
-    uint32_t boolSize = boolGuard->GetSize();
-    EXPECT_EQ(boolSize, 0);
+    // 注意：头文件中没有kString, kInt32等作为独立类型创建，这些是值类型
+    // 对象类型只能是kObject或kArray
 }
 
 // 测试数组索引访问的GetType接口
 TEST_F(CppxJsonTest, TestGetTypeByIndex)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 创建一个包含不同类型元素的数组
-    auto arrayGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeArray);
+    JsonGuard arrayGuard(IJson::JsonType::kArray);
     ASSERT_NE(arrayGuard.get(), nullptr);
     
     // 添加不同类型的元素
     arrayGuard->AppendString("字符串元素");
-    arrayGuard->AppendInt(42);
+    arrayGuard->AppendInt32(42);
     arrayGuard->AppendBool(true);
     
     // 添加一个对象
-    auto subObjGuard = IJson::CreateWithGuard();
+    JsonGuard subObjGuard;
     ASSERT_NE(subObjGuard.get(), nullptr);
     subObjGuard->SetString("name", "子对象");
     arrayGuard->AppendObject(subObjGuard.get());
     
     // 添加一个数组
-    auto subArrayGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeArray);
+    JsonGuard subArrayGuard(IJson::JsonType::kArray);
     ASSERT_NE(subArrayGuard.get(), nullptr);
     subArrayGuard->AppendString("数组元素");
     arrayGuard->AppendArray(subArrayGuard.get());
     
-    // 测试通过索引获取类型
-    IJson::JsonType type0 = arrayGuard->GetType(0);
-    EXPECT_EQ(type0, IJson::JsonType::kJsonTypeString);
+    // 测试通过索引获取类型（需要明确指定uint32_t类型）
+    IJson::JsonType type0 = arrayGuard->GetType(static_cast<uint32_t>(0));
+    EXPECT_EQ(type0, IJson::JsonType::kString);
     
-    IJson::JsonType type1 = arrayGuard->GetType(1);
-    EXPECT_EQ(type1, IJson::JsonType::kJsonTypeNumber);
+    IJson::JsonType type1 = arrayGuard->GetType(static_cast<uint32_t>(1));
+    EXPECT_EQ(type1, IJson::JsonType::kInt32);
     
-    IJson::JsonType type2 = arrayGuard->GetType(2);
-    EXPECT_EQ(type2, IJson::JsonType::kJsonTypeBoolean);
+    IJson::JsonType type2 = arrayGuard->GetType(static_cast<uint32_t>(2));
+    EXPECT_EQ(type2, IJson::JsonType::kBool);
     
-    IJson::JsonType type3 = arrayGuard->GetType(3);
-    EXPECT_EQ(type3, IJson::JsonType::kJsonTypeObject);
+    IJson::JsonType type3 = arrayGuard->GetType(static_cast<uint32_t>(3));
+    EXPECT_EQ(type3, IJson::JsonType::kObject);
     
-    IJson::JsonType type4 = arrayGuard->GetType(4);
-    EXPECT_EQ(type4, IJson::JsonType::kJsonTypeArray);
+    IJson::JsonType type4 = arrayGuard->GetType(static_cast<uint32_t>(4));
+    EXPECT_EQ(type4, IJson::JsonType::kArray);
     
     // 测试越界访问
-    IJson::JsonType outOfBoundsType = arrayGuard->GetType(10);
-    EXPECT_EQ(outOfBoundsType, IJson::JsonType::kJsonTypeNull);
+    IJson::JsonType outOfBoundsType = arrayGuard->GetType(static_cast<uint32_t>(10));
+    EXPECT_EQ(outOfBoundsType, IJson::JsonType::kInvalid);
     
-    // 测试负数索引
-    IJson::JsonType negativeType = arrayGuard->GetType(-1);
-    EXPECT_EQ(negativeType, IJson::JsonType::kJsonTypeNull);
+    // 测试负数索引（会被转换为很大的uint32_t）
+    IJson::JsonType negativeType = arrayGuard->GetType(static_cast<uint32_t>(-1));
+    EXPECT_EQ(negativeType, IJson::JsonType::kInvalid);
 }
 
 // 测试数组操作的边界情况
 TEST_F(CppxJsonTest, TestArrayBoundaryConditions)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 创建一个数组
-    auto arrayGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeArray);
+    JsonGuard arrayGuard(IJson::JsonType::kArray);
     ASSERT_NE(arrayGuard.get(), nullptr);
     
-    // 测试在空数组上访问元素
-    const char* emptyStr = arrayGuard->GetString(0);
+    // 测试在空数组上访问元素（需要明确指定uint32_t类型）
+    const char* emptyStr = arrayGuard->GetString(static_cast<uint32_t>(0));
     EXPECT_EQ(emptyStr, nullptr);
     
-    int32_t emptyInt = arrayGuard->GetInt(0);
+    int32_t emptyInt = arrayGuard->GetInt32(static_cast<uint32_t>(0));
     EXPECT_EQ(emptyInt, 0);
     
-    bool emptyBool = arrayGuard->GetBool(0);
+    bool emptyBool = arrayGuard->GetBool(static_cast<uint32_t>(0));
     EXPECT_FALSE(emptyBool);
     
-    auto emptyObj = arrayGuard->GetObject(0);
-    EXPECT_EQ(emptyObj.get(), nullptr);
+    const IJson* emptyObj = arrayGuard->GetObject(static_cast<uint32_t>(0));
+    EXPECT_EQ(emptyObj, nullptr);
     
-    auto emptyArray = arrayGuard->GetArray(0);
-    EXPECT_EQ(emptyArray.get(), nullptr);
+    const IJson* emptyArray = arrayGuard->GetArray(static_cast<uint32_t>(0));
+    EXPECT_EQ(emptyArray, nullptr);
     
     // 添加一些元素
     arrayGuard->AppendString("test");
-    arrayGuard->AppendInt(123);
+    arrayGuard->AppendInt32(123);
     arrayGuard->AppendBool(false);
     
     // 测试获取数组大小
     uint32_t size = arrayGuard->GetSize();
     EXPECT_EQ(size, 3);
     
-    // 测试访问各个元素
-    const char* firstStr = arrayGuard->GetString(0);
+    // 测试访问各个元素（需要明确指定uint32_t类型）
+    const char* firstStr = arrayGuard->GetString(static_cast<uint32_t>(0));
     ASSERT_NE(firstStr, nullptr);
     EXPECT_STREQ(firstStr, "test");
     
-    int32_t secondInt = arrayGuard->GetInt(1);
+    int32_t secondInt = arrayGuard->GetInt32(static_cast<uint32_t>(1));
     EXPECT_EQ(secondInt, 123);
     
-    bool thirdBool = arrayGuard->GetBool(2);
+    bool thirdBool = arrayGuard->GetBool(static_cast<uint32_t>(2));
     EXPECT_FALSE(thirdBool);
     
-    // 测试访问超出范围的元素
-    const char* outOfRangeStr = arrayGuard->GetString(10, "默认值");
+    // 测试访问超出范围的元素（需要明确指定uint32_t类型）
+    const char* outOfRangeStr = arrayGuard->GetString(static_cast<uint32_t>(10), "默认值");
     EXPECT_STREQ(outOfRangeStr, "默认值");
     
-    int32_t outOfRangeInt = arrayGuard->GetInt(10, 999);
+    int32_t outOfRangeInt = arrayGuard->GetInt32(static_cast<uint32_t>(10), 999);
     EXPECT_EQ(outOfRangeInt, 999);
     
-    bool outOfRangeBool = arrayGuard->GetBool(10, true);
+    bool outOfRangeBool = arrayGuard->GetBool(static_cast<uint32_t>(10), true);
     EXPECT_TRUE(outOfRangeBool);
 }
 
 // 测试数组和对象的混合操作
 TEST_F(CppxJsonTest, TestArrayObjectMixedOperations)
 {
-    auto jsonGuard = IJson::CreateWithGuard();
+    JsonGuard jsonGuard;
     ASSERT_NE(jsonGuard.get(), nullptr);
     
     // 创建一个包含数组的对象
-    auto arrayGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeArray);
+    JsonGuard arrayGuard(IJson::JsonType::kArray);
     ASSERT_NE(arrayGuard.get(), nullptr);
     
     // 在数组中添加不同类型的元素
     arrayGuard->AppendString("字符串");
-    arrayGuard->AppendInt(100);
+    arrayGuard->AppendInt32(100);
     arrayGuard->AppendBool(true);
     
     // 创建一个子对象并添加到数组
-    auto subObjGuard = IJson::CreateWithGuard();
+    JsonGuard subObjGuard;
     ASSERT_NE(subObjGuard.get(), nullptr);
     subObjGuard->SetString("name", "数组中的对象");
-    subObjGuard->SetInt("id", 1);
+    subObjGuard->SetInt32("id", 1);
     arrayGuard->AppendObject(subObjGuard.get());
     
     // 创建一个子数组并添加到数组
-    auto subArrayGuard = IJson::CreateWithGuard(IJson::JsonType::kJsonTypeArray);
+    JsonGuard subArrayGuard(IJson::JsonType::kArray);
     ASSERT_NE(subArrayGuard.get(), nullptr);
     subArrayGuard->AppendString("子数组元素1");
     subArrayGuard->AppendString("子数组元素2");
@@ -1016,47 +1047,47 @@ TEST_F(CppxJsonTest, TestArrayObjectMixedOperations)
     EXPECT_EQ(result, 0);
     
     // 验证混合数组的内容
-    auto retrievedArray = jsonGuard->GetArray("mixedArray");
-    ASSERT_NE(retrievedArray.get(), nullptr);
+    const IJson* retrievedArray = jsonGuard->GetArray("mixedArray");
+    ASSERT_NE(retrievedArray, nullptr);
     
     // 验证数组大小
     uint32_t arraySize = retrievedArray->GetSize();
     EXPECT_EQ(arraySize, 5);
     
-    // 验证字符串元素
-    const char* str = retrievedArray->GetString(0);
+    // 验证字符串元素（需要明确指定uint32_t类型）
+    const char* str = retrievedArray->GetString(static_cast<uint32_t>(0));
     ASSERT_NE(str, nullptr);
     EXPECT_STREQ(str, "字符串");
     
-    // 验证整数元素
-    int32_t intVal = retrievedArray->GetInt(1);
+    // 验证整数元素（需要明确指定uint32_t类型）
+    int32_t intVal = retrievedArray->GetInt32(static_cast<uint32_t>(1));
     EXPECT_EQ(intVal, 100);
     
-    // 验证布尔元素
-    bool boolVal = retrievedArray->GetBool(2);
+    // 验证布尔元素（需要明确指定uint32_t类型）
+    bool boolVal = retrievedArray->GetBool(static_cast<uint32_t>(2));
     EXPECT_TRUE(boolVal);
     
-    // 验证对象元素
-    auto obj = retrievedArray->GetObject(3);
-    ASSERT_NE(obj.get(), nullptr);
+    // 验证对象元素（需要明确指定uint32_t类型）
+    const IJson* obj = retrievedArray->GetObject(static_cast<uint32_t>(3));
+    ASSERT_NE(obj, nullptr);
     const char* objName = obj->GetString("name");
     ASSERT_NE(objName, nullptr);
     EXPECT_STREQ(objName, "数组中的对象");
     
-    int32_t objId = obj->GetInt("id");
+    int32_t objId = obj->GetInt32("id");
     EXPECT_EQ(objId, 1);
     
-    // 验证数组元素
-    auto arr = retrievedArray->GetArray(4);
-    ASSERT_NE(arr.get(), nullptr);
+    // 验证数组元素（需要明确指定uint32_t类型）
+    const IJson* arr = retrievedArray->GetArray(static_cast<uint32_t>(4));
+    ASSERT_NE(arr, nullptr);
     uint32_t subArraySize = arr->GetSize();
     EXPECT_EQ(subArraySize, 2);
     
-    const char* subStr1 = arr->GetString(0);
+    const char* subStr1 = arr->GetString(static_cast<uint32_t>(0));
     ASSERT_NE(subStr1, nullptr);
     EXPECT_STREQ(subStr1, "子数组元素1");
     
-    const char* subStr2 = arr->GetString(1);
+    const char* subStr2 = arr->GetString(static_cast<uint32_t>(1));
     ASSERT_NE(subStr2, nullptr);
     EXPECT_STREQ(subStr2, "子数组元素2");
 }

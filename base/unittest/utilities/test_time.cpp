@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
-#include <utilities/cppx_time.h>
+#include <utilities/time.h>
 #include <chrono>
-#include <thread>
 
 using namespace cppx::base;
 
