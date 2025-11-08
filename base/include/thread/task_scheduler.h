@@ -1,8 +1,9 @@
 #ifndef __CPPX_TASK_SCHEDULER_H__
 #define __CPPX_TASK_SCHEDULER_H__
 
-#include <stdint.h>
-#include <utilities/cppx_export.h>
+#include <cstdint>
+#include <utilities/export.h>
+#include <utilities/json.h>
 
 namespace cppx
 {
@@ -100,10 +101,12 @@ public:
     virtual int32_t CancleTask(int64_t iTaskID) noexcept = 0;
 
     /**
-     * @brief 获取调度器任务队列中的任务调度信息
-     * return 成功返回正在处理的任务调度信息，否则返回 nullptr
+     * @brief 获取调度器统计信息
+     * @param pJson 统计信息对象
+     * @return 成功返回0，失败返回错误码
+     * @note 多线程安全
     */
-    virtual const char *GetStats() noexcept = 0;
+    virtual int32_t GetStats(IJson *pJson) const noexcept = 0;
 };
 
 }

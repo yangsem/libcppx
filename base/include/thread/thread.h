@@ -1,8 +1,8 @@
 #ifndef __CPPX_THREAD_H__
 #define __CPPX_THREAD_H__
 
-#include <stdint.h>
-#include <utilities/cppx_export.h>
+#include <cstdint>
+#include <utilities/export.h>
 
 namespace cppx
 {
@@ -130,7 +130,7 @@ public:
      * 
      * @note 多线程安全，可以用于检测线程是否卡死
      */
-    virtual uint64_t GetLastLoopTimeNs() const noexcept = 0;
+    virtual uint64_t GetLastRunTimeNs() const noexcept = 0;
 };
 
 }

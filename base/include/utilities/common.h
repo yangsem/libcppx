@@ -1,7 +1,7 @@
 #ifndef __CPPX_COMMON_H__
 #define __CPPX_COMMON_H__
 
-#include <stdint.h>
+#include <cstdint>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <assert.h>
 
-#include <utilities/cppx_export.h>
+#include <utilities/export.h>
 
 #ifndef OS_WIN
 #define likely(x) __builtin_expect((x), 1)
@@ -47,7 +47,6 @@
 #define gettid() GetCurrentThreadId()
 #define set_thread_name(name) // not supported in windows
 #define thread_bind_cpu(cpu_no) // not supported in windows
-#define clock_time_nano()
 #endif
 
 #define CACHE_LINE 64
@@ -92,9 +91,9 @@ constexpr uint64_t kSecond = kMill * 1000;
 #define BLUE
 #endif
 
-#define TO_STR1(x) #x
-#define TO_STR2(x) TO_STR1(x)
-#define __POSITION__ __FUNCTION__, __FILE__ ":" TO_STR2(__LINE__)
+#define __TO_STR1(x) #x
+#define __TO_STR2(x) __TO_STR1(x)
+#define __POSITION__ __FILE__ ":" __TO_STR2(__LINE__), __FUNCTION__
 
 #define PRINT_BASE(channel, format, ...)              \
     do                                                \

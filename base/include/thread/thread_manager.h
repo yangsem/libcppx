@@ -1,8 +1,9 @@
 #ifndef __CPPX_THREAD_MANAGER_H__
 #define __CPPX_THREAD_MANAGER_H__
 
-#include <utilities/cppx_export.h>
-#include <thread/cppx_thread.h>
+#include <utilities/export.h>
+#include <thread/thread.h>
+#include <utilities/json.h>
 
 namespace cppx
 {
@@ -19,6 +20,7 @@ public:
         kThreadBlock,
         kThreadUnblock,
     };
+
     /**
      * @brief 线程事件函数
      * @param iThreadId 线程ID
@@ -135,6 +137,14 @@ public:
      * @note 多线程安全
      */
     virtual int32_t ForEachAllThreadLocal(int32_t iThreadLocalId, ThreadLocalForEachFunc pThreadLocalForEachFunc, void *pUserParam) noexcept = 0;
+
+    /**
+     * @brief 获取线程管理器统计信息
+     * @param pJson 统计信息对象
+     * @return 成功返回0，失败返回错误码
+     * @note 多线程安全
+     */
+    virtual int32_t GetStats(IJson *pJson) const noexcept = 0;
 };
 
 }

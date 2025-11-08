@@ -1,12 +1,7 @@
-#include <time.h>
-#ifndef OS_WIN
-#include <sys/time.h>
-#else
-xxxx
-#endif
-#include <utilities/cppx_time.h>
-#include <utilities/cppx_common.h>
-#include <utilities/cppx_error_code.h>
+#include <ctime>
+#include <utilities/time.h>
+#include <utilities/common.h>
+#include <utilities/error_code.h>
 
 namespace cppx
 {
@@ -48,15 +43,6 @@ ITime::ITime(uint64_t uTimeStampSecond) noexcept
     uMinute = static_cast<uint32_t>(tm.tm_min);
     uSecond = static_cast<uint32_t>(tm.tm_sec);
     uMicro = 0;
-}
-
-ITime &ITime::operator=(const ITime &time) noexcept
-{
-    if (this != &time)
-    {
-        memcpy(this, &time, sizeof(ITime));
-    }
-    return *this;
 }
 
 ITime& ITime::operator=(uint64_t uTimeStampSecond) noexcept
@@ -140,7 +126,7 @@ ITime &ITime::operator-(const ITime &other) noexcept
     }
     else
     {
-        memset(this, 0x00, sizeof(*this));
+        *this = ITime(0);
     }
     return *this;
 }

@@ -1,8 +1,8 @@
 #ifndef __CPPX_TIME_H__
 #define __CPPX_TIME_H__
 
-#include <stdint.h>
-#include <utilities/cppx_export.h>
+#include <cstdint>
+#include <utilities/export.h>
 
 namespace cppx
 {
@@ -37,7 +37,7 @@ public:
      */ 
     ITime(uint64_t uTimeStampSecond) noexcept;
 
-    ITime &operator=(const ITime &) noexcept;
+    ITime &operator=(const ITime &) noexcept = default;
 
     /**
      * @brief UTC时间戳赋值函数
