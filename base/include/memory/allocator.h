@@ -17,7 +17,7 @@ public:
 public:
     /**
      * @brief 获取全局单例对象
-     * @return 成功返回IAllocator对象指针，失败返回nullptr
+     * @return 成功返回IAllocator对象指针，一定成功
      */
     static IAllocator *GetInstance() noexcept;
 

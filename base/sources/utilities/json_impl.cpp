@@ -1,12 +1,11 @@
 #include "json_impl.h"
-#include "utilities/json.h"
-#include "json/value.h"
 #include <cstdint>
 #include <fstream>
 #include <cctype>
+#include <utility>
 #include <utilities/common.h>
 #include <utilities/error_code.h>
-#include <utility>
+#include <memory/allocator_ex.h>
 
 namespace cppx
 {
@@ -48,7 +47,7 @@ static Json::ValueType GetJsonValueType(IJson::JsonType jsonType)
 
 IJson *IJson::Create(JsonType jsonType) noexcept
 {
-    return NEW CJsonImpl(jsonType);
+    return AllocatorEx::GetInstance()->New<CJsonImpl>(jsonType);
 }
 
 void IJson::Destroy(IJson *pJson) noexcept
@@ -208,15 +207,20 @@ const IJson *CJsonImpl::GetObject(const char *pKey) const noexcept
 {
     if (likely(pKey != nullptr && m_jsonValue.isMember(pKey) && m_jsonValue[pKey].isObject()))
     {
+        CJsonImpl *pJsonImpl = nullptr;
         try
         {
             auto jsonValue = m_jsonValue[pKey];
-            m_vecJsonValues.push_back(nullptr);
-            m_vecJsonValues.back() = new CJsonImpl(std::move(jsonValue));
-            return m_vecJsonValues.back();
+            pJsonImpl = AllocatorEx::GetInstance()->New<CJsonImpl>(std::move(jsonValue));
+            if (likely(pJsonImpl != nullptr))
+            {
+                m_vecJsonValues.push_back(pJsonImpl);
+                return pJsonImpl;
+            }
         }
         catch (std::exception &e)
         {
+            AllocatorEx::GetInstance()->Delete(pJsonImpl);
             SetLastError(ErrorCode::kThrowException);
             return nullptr;
         }
@@ -254,15 +258,20 @@ const IJson *CJsonImpl::GetArray(const char *pKey) const noexcept
 {
     if (likely(pKey != nullptr && m_jsonValue.isMember(pKey) && m_jsonValue[pKey].isArray()))
     {
+        CJsonImpl *pJsonImpl = nullptr;
         try
         {
             auto subJsonValue = m_jsonValue[pKey];
-            m_vecJsonValues.push_back(nullptr);
-            m_vecJsonValues.back() = new CJsonImpl(std::move(subJsonValue));
-            return m_vecJsonValues.back();
+            pJsonImpl = AllocatorEx::GetInstance()->New<CJsonImpl>(std::move(subJsonValue));
+            if (likely(pJsonImpl != nullptr))
+            {
+                m_vecJsonValues.push_back(pJsonImpl);
+                return pJsonImpl;
+            }
         }
         catch (std::exception &e)
         {
+            AllocatorEx::GetInstance()->Delete(pJsonImpl);
             SetLastError(ErrorCode::kThrowException);
             return nullptr;
         }
@@ -375,15 +384,20 @@ IJson *CJsonImpl::SetObject(const char *pKey) noexcept
     Json::Value jsonValue(Json::objectValue);
     if (SetValue(pKey, jsonValue) == ErrorCode::kSuccess)
     {
+        CJsonImpl *pJsonImpl = nullptr;
         try
         {
             auto &subJsonValue = m_jsonValue[pKey];
-            m_vecJsonValues.push_back(nullptr);
-            m_vecJsonValues.back() = new CJsonImpl(subJsonValue, false);
-            return m_vecJsonValues.back();
+            pJsonImpl = AllocatorEx::GetInstance()->New<CJsonImpl>(subJsonValue, false);
+            if (likely(pJsonImpl != nullptr))
+            {
+                m_vecJsonValues.push_back(pJsonImpl);
+                return pJsonImpl;
+            }
         }
         catch (std::exception &e)
         {
+            AllocatorEx::GetInstance()->Delete(pJsonImpl);
             SetLastError(ErrorCode::kThrowException);
             return nullptr;
         }
@@ -410,15 +424,20 @@ IJson *CJsonImpl::SetArray(const char *pKey) noexcept
     Json::Value jsonValue(Json::arrayValue);
     if (SetValue(pKey, jsonValue) == ErrorCode::kSuccess)
     {
+        CJsonImpl *pJsonImpl = nullptr;
         try
         {
             auto &subJsonValue = m_jsonValue[pKey];
-            m_vecJsonValues.push_back(nullptr);
-            m_vecJsonValues.back() = new CJsonImpl(subJsonValue, false);
-            return m_vecJsonValues.back();
+            pJsonImpl = AllocatorEx::GetInstance()->New<CJsonImpl>(subJsonValue, false);
+            if (likely(pJsonImpl != nullptr))
+            {
+                m_vecJsonValues.push_back(pJsonImpl);
+                return pJsonImpl;
+            }
         }
         catch (std::exception &e)
         {
+            AllocatorEx::GetInstance()->Delete(pJsonImpl);
             SetLastError(ErrorCode::kThrowException);
             return nullptr;
         }
@@ -478,15 +497,20 @@ const IJson *CJsonImpl::GetObject(uint32_t iIndex) const noexcept
 {
     if (likely(m_jsonValue.isArray() && iIndex < m_jsonValue.size()))
     {
+        CJsonImpl *pJsonImpl = nullptr;
         try
         {
             auto &subJsonValue = m_jsonValue[iIndex];
-            m_vecJsonValues.push_back(nullptr);
-            m_vecJsonValues.back() = new CJsonImpl(subJsonValue, false);
-            return m_vecJsonValues.back();
+            pJsonImpl = AllocatorEx::GetInstance()->New<CJsonImpl>(subJsonValue, false);
+            if (likely(pJsonImpl != nullptr))
+            {
+                m_vecJsonValues.push_back(pJsonImpl);
+                return pJsonImpl;
+            }
         }
         catch (std::exception &e)
         {
+            AllocatorEx::GetInstance()->Delete(pJsonImpl);
             SetLastError(ErrorCode::kThrowException);
             return nullptr;
         }
@@ -524,15 +548,20 @@ const IJson *CJsonImpl::GetArray(uint32_t iIndex) const noexcept
 {
     if (likely(m_jsonValue.isArray() && iIndex < m_jsonValue.size()))
     {
+        CJsonImpl *pJsonImpl = nullptr;
         try
         {
             auto &subJsonValue = m_jsonValue[iIndex];
-            m_vecJsonValues.push_back(nullptr);
-            m_vecJsonValues.back() = new CJsonImpl(subJsonValue, false);
-            return m_vecJsonValues.back();
+            pJsonImpl = AllocatorEx::GetInstance()->New<CJsonImpl>(subJsonValue, false);
+            if (likely(pJsonImpl != nullptr))
+            {
+                m_vecJsonValues.push_back(pJsonImpl);
+                return pJsonImpl;
+            }
         }
         catch (std::exception &e)
         {
+            AllocatorEx::GetInstance()->Delete(pJsonImpl);
             SetLastError(ErrorCode::kThrowException);
             return nullptr;
         }
@@ -645,15 +674,21 @@ IJson *CJsonImpl::AppendObject() noexcept
     Json::Value jsonValue(Json::objectValue);
     if (AppendValue(jsonValue) == ErrorCode::kSuccess)
     {
+        CJsonImpl *pJsonImpl = nullptr;
         try
         {
             auto &subJsonValue = m_jsonValue[m_jsonValue.size() - 1];
             m_vecJsonValues.push_back(nullptr);
-            m_vecJsonValues.back() = new CJsonImpl(subJsonValue, false);
-            return m_vecJsonValues.back();
+            pJsonImpl = AllocatorEx::GetInstance()->New<CJsonImpl>(subJsonValue, false);
+            if (likely(pJsonImpl != nullptr))
+            {
+                m_vecJsonValues.push_back(pJsonImpl);
+                return pJsonImpl;
+            }
         }
         catch (std::exception &e)
         {
+            AllocatorEx::GetInstance()->Delete(pJsonImpl);
             SetLastError(ErrorCode::kThrowException);
             return nullptr;
         }
@@ -680,15 +715,20 @@ IJson *CJsonImpl::AppendArray() noexcept
     Json::Value jsonValue(Json::arrayValue);
     if (AppendValue(jsonValue) == ErrorCode::kSuccess)
     {
+        CJsonImpl *pJsonImpl = nullptr;
         try
         {
             auto &subJsonValue = m_jsonValue[m_jsonValue.size() - 1];
-            m_vecJsonValues.push_back(nullptr);
-            m_vecJsonValues.back() = new CJsonImpl(subJsonValue, false);
-            return m_vecJsonValues.back();
+            pJsonImpl = AllocatorEx::GetInstance()->New<CJsonImpl>(subJsonValue, false);
+            if (likely(pJsonImpl != nullptr))
+            {
+                m_vecJsonValues.push_back(pJsonImpl);
+                return pJsonImpl;
+            }
         }
         catch (std::exception &e)
         {
+            AllocatorEx::GetInstance()->Delete(pJsonImpl);
             SetLastError(ErrorCode::kThrowException);
             return nullptr;
         }
