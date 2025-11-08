@@ -93,7 +93,7 @@ public:
      * @param pModule 模块名称
      * @param pFileLine 文件行号
      * @param pFunction 函数名称
-     * @param pFormat 格式化字符串, 格式："this is a test {0} {1} {2} {}"
+     * @param pFormat 格式化字符串, 格式："this is a test {} {} {}"
      * @param ppParams 参数数组, 格式：{"test", "test2", "test3"}
      * @param uParamCount 参数数量
      * @return 成功返回0，失败返回错误码
@@ -126,24 +126,32 @@ public:
 
 namespace config
 {
+constexpr const char *kLoggerName = "logger_name"; // 日志名称, 类型: string
 constexpr const char *kLogLevel = "log_level";  // 日志级别, 类型: string
 constexpr const char *kLogAsync = "log_async";  // 是否异步, 类型: bool
+constexpr const char *kBindCpuNo = "bind_cpu_no";  // 绑定CPU编号, 类型: uint32_t
 constexpr const char *kLogPath = "log_path";    // 日志路径, 类型: string
 constexpr const char *kLogPrefix = "log_prefix";    // 日志文件前缀名, 类型: string
 constexpr const char *kLogSuffix = "log_suffix";    // 日志文件后缀名, 类型: string
 constexpr const char *kLogFileMaxSizeMB = "log_file_max_size_mb"; // 日志文件最大大小(MB), 类型: uint64_t
 constexpr const char *kLogTotalSizeMB = "log_total_size_mb"; // 日志文件总大小(MB), 类型: uint64_t
+constexpr const char *kLogFormatBufferSize = "log_format_buffer_size"; // 日志格式化缓冲区大小, 类型: uint32_t
+constexpr const char *kLogChannelMaxCount = "log_channel_max_count"; // 日志通道最大元素数量, 类型: uint32_t
 }
 
 namespace default_value
 {
-constexpr const char *kLogLevel = "info"; // 日志级别, 默认: info
+constexpr const char *kLoggerName = ""; // 日志名称, 默认: 无
+constexpr uint32_t kLogLevel = (uint32_t)ILogger::LogLevel::kInfo; // 日志级别, 默认: info
 constexpr const bool kLogAsync = false; // 是否异步, 默认: false
+constexpr const uint32_t kBindCpuNo = UINT32_MAX; // 绑定CPU编号, 默认: 不绑定
 constexpr const char *kLogPath = "./log"; // 日志路径, 默认: ./log
 constexpr const char *kLogPrefix = ""; // 日志文件前缀名, 默认: 空
 constexpr const char *kLogSuffix = ".log"; // 日志文件后缀名, 默认: .log
 constexpr const uint64_t kLogFileMaxSizeMB = 16; // 日志文件最大大小(MB), 默认: 16MB
 constexpr const uint64_t kLogTotalSizeMB = 4 * 1024; // 日志文件总大小(MB), 默认: 4GB
+constexpr const uint32_t kLogFormatBufferSize = 4096; // 日志格式化缓冲区大小, 默认: 4096
+constexpr const uint32_t kLogChannelMaxCount = 8192; // 日志通道最大元素数量, 默认: 8192
 }
 
 }

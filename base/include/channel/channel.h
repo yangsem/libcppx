@@ -77,7 +77,7 @@ public:
      * @return 成功返回通道指针，失败返回nullptr
      * @note 多线程安全
      */
-    static IChannel *Create(const ChannelConfig &stConfig) noexcept;
+    static IChannel *Create(const ChannelConfig *pConfig) noexcept;
 
     /**
      * @brief 销毁一个通道

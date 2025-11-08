@@ -18,6 +18,7 @@ enum ErrorCode : int32_t {
     kThrowException = 103, // 抛出异常
     kInvalidCall = 104,    // 无效调用
     kSysCallFailed = 105,  // 系统调用失败
+    kSystemError = 106,    // 系统错误
 };
 
 /**
