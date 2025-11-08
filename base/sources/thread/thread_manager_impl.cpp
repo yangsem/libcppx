@@ -1,7 +1,7 @@
-#include "cppx_thread_manager_impl.h"
-#include <utilities/cppx_common.h>
-#include <utilities/cppx_last_error.h>
-#include <utilities/cppx_error_code.h>
+#include "thread_manager_impl.h"
+#include <utilities/common.h>
+#include <utilities/error_code.h>
+#include <utilities/error_code.h>
 
 namespace cppx
 {
@@ -31,7 +31,7 @@ int32_t CThreadManagerImpl::RegisterThreadEventFunc(ThreadEventFunc pThreadEvent
 {
     if (pThreadEventFunc == nullptr)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "ThreadEventFunc is nullptr");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
@@ -42,7 +42,7 @@ int32_t CThreadManagerImpl::RegisterThreadEventFunc(ThreadEventFunc pThreadEvent
     }
     catch(std::exception &e)
     {
-        SET_LAST_ERROR(ErrorCode::kThrowException, "RegisterThreadEventFunc throw exception %s", e.what());
+        SetLastError(ErrorCode::kThrowException);
         return ErrorCode::kThrowException;
     }
 
@@ -67,7 +67,7 @@ IThread *CThreadManagerImpl::CreateThread() noexcept
         {
             IThread::Destroy(pThread);
         }
-        SET_LAST_ERROR(ErrorCode::kThrowException, "CreateThread throw exception %s", e.what());
+        SetLastError(ErrorCode::kThrowException);
         return nullptr;
     }
 
@@ -88,13 +88,13 @@ int32_t CThreadManagerImpl::CreateThread(const char *pThreadName, IThread::Threa
 {
     if (pThreadName == nullptr)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "Thread name is nullptr");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
     if (pThreadFunc == nullptr)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "Thread func is nullptr");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
@@ -104,7 +104,7 @@ int32_t CThreadManagerImpl::CreateThread(const char *pThreadName, IThread::Threa
         std::lock_guard<std::mutex> lock(m_lock);
         if (m_mapThreads.count(pThreadName) != 0)
         {
-            SET_LAST_ERROR(ErrorCode::kInvalidParam, "Thread %s already exists", pThreadName);
+            SetLastError(ErrorCode::kInvalidParam);
             return ErrorCode::kInvalidParam;
         }
         pThread = IThread::Create(pThreadName, pThreadFunc, pThreadParam);
@@ -119,7 +119,7 @@ int32_t CThreadManagerImpl::CreateThread(const char *pThreadName, IThread::Threa
         {
             IThread::Destroy(pThread);
         }
-        SET_LAST_ERROR(ErrorCode::kThrowException, "CreateThread throw exception %s", e.what());
+        SetLastError(ErrorCode::kThrowException);
         return ErrorCode::kThrowException;
     }
 
@@ -130,7 +130,7 @@ int32_t CThreadManagerImpl::DestroyThread(const char *pThreadName) noexcept
 {
     if (pThreadName == nullptr)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "Thread name is nullptr");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
@@ -138,7 +138,7 @@ int32_t CThreadManagerImpl::DestroyThread(const char *pThreadName) noexcept
     auto iter = m_mapThreads.find(pThreadName);
     if (iter == m_mapThreads.end())
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "Thread %s not found", pThreadName);
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
@@ -183,7 +183,7 @@ void* CThreadManagerImpl::GetThreadLocal(int32_t iThreadLocalId, uint64_t uThrea
     }
     catch(std::exception &e)
     {
-        SET_LAST_ERROR(ErrorCode::kThrowException, "GetThreadLocal throw exception %s", e.what());
+        SetLastError(ErrorCode::kThrowException);
         return nullptr;
     }
     return nullptr;
@@ -193,7 +193,7 @@ int32_t CThreadManagerImpl::ForEachAllThreadLocal(int32_t iThreadLocalId, IThrea
 {
     if (pThreadLocalForEachFunc == nullptr)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "ThreadLocalForEachFunc is nullptr");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
@@ -210,6 +210,18 @@ int32_t CThreadManagerImpl::ForEachAllThreadLocal(int32_t iThreadLocalId, IThrea
             }
         }
     }
+    return 0;
+}
+
+int32_t CThreadManagerImpl::GetStats(IJson *pJson) const noexcept
+{
+    if (pJson == nullptr)
+    {
+        SetLastError(ErrorCode::kInvalidParam);
+        return ErrorCode::kInvalidParam;
+    }
+
+    pJson->Clear();
     return 0;
 }
 

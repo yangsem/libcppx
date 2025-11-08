@@ -1,7 +1,6 @@
-#include <utilities/cppx_common.h>
-#include <utilities/cppx_last_error.h>
-#include <utilities/cppx_error_code.h>
-#include "cppx_task_scheduler_impl.h"
+#include <utilities/common.h>
+#include <utilities/error_code.h>
+#include "task_scheduler_impl.h"
 
 namespace cppx
 {
@@ -13,7 +12,7 @@ ITaskScheduler *ITaskScheduler::Create(const char *pSchedulerName, uint32_t uPre
     CTaskSchedulerImpl *pScheduler = NEW CTaskSchedulerImpl();
     if (pScheduler == nullptr)
     {
-        SET_LAST_ERROR(ErrorCode::kNoMemory, "No memory to create TaskScheduler");
+        SetLastError(ErrorCode::kOutOfMemory);
         return nullptr;
     }
 
@@ -53,7 +52,7 @@ int32_t CTaskSchedulerImpl::Init(const char *pSchedulerName, uint32_t uPrecision
     m_pThread = m_pThreadManager->CreateThread();
     if (m_pThread == nullptr || m_pThread->Bind(pSchedulerName, RunWrapper, this) != 0)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "CreateThread failed");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
@@ -64,7 +63,7 @@ int32_t CTaskSchedulerImpl::Start() noexcept
 {
     if (m_pThread == nullptr)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "Thread is nullptr");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
@@ -75,7 +74,7 @@ void CTaskSchedulerImpl::Stop() noexcept
 {
     if (m_pThread == nullptr)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "Thread is nullptr");
+        SetLastError(ErrorCode::kInvalidParam);
         return;
     }
 
@@ -86,8 +85,7 @@ int64_t CTaskSchedulerImpl::PostTask(Task *pTask) noexcept
 {
     if (unlikely(pTask == nullptr))
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, 
-            "Scheduler %s invalid param", m_strSchedulerName.c_str());
+        SetLastError(ErrorCode::kInvalidParam);
         return TaskID::kInvalidTaskID;
     }
 
@@ -95,10 +93,7 @@ int64_t CTaskSchedulerImpl::PostTask(Task *pTask) noexcept
         || pTask->pTaskFunc == nullptr 
         || pTask->eVersion != TaskVersion::kVersion))
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, 
-            "Scheduler %s TaskName %p TaskFunc %p, Version(%u/%u)",
-            m_strSchedulerName.c_str(), pTask->pTaskName, 
-            pTask->pTaskFunc, pTask->eVersion, TaskVersion::kVersion);
+        SetLastError(ErrorCode::kInvalidParam);
         return TaskID::kInvalidTaskID;
     }
 
@@ -126,8 +121,7 @@ int64_t CTaskSchedulerImpl::PostTask(Task *pTask) noexcept
     }
     catch(std::exception &e)
     {
-        SET_LAST_ERROR(ErrorCode::kThrowException, "Scheduler %s Post Task %s Failed",
-            m_strSchedulerName.c_str(), pTask->pTaskName);
+        SetLastError(ErrorCode::kThrowException);
         return TaskID::kInvalidTaskID;
     }
 
@@ -181,17 +175,20 @@ int32_t CTaskSchedulerImpl::CancleTask(int64_t iTaskID) noexcept
         }
     }
 
-    SET_LAST_ERROR(ErrorCode::kInvalidParam, "Scheduler %s Cancel Task %ld Failed", 
-        m_strSchedulerName.c_str(), iTaskID);
+    SetLastError(ErrorCode::kInvalidParam);
     return ErrorCode::kInvalidParam;
 }
 
-const char *CTaskSchedulerImpl::GetStats() noexcept
+int32_t CTaskSchedulerImpl::GetStats(IJson *pJson) const noexcept
 {
-    // 暂不实现
-    SET_LAST_ERROR(ErrorCode::kInvalidCall, "Scheduler %s Not Implement %s", 
-        m_strSchedulerName.c_str(), __FUNCTION__);
-    return nullptr;
+    if (pJson == nullptr)
+    {
+        SetLastError(ErrorCode::kInvalidParam);
+        return ErrorCode::kInvalidParam;
+    }
+
+    pJson->Clear();
+    return 0;
 }
 
 bool CTaskSchedulerImpl::RunWrapper(void *ptr)
@@ -280,8 +277,7 @@ void CTaskSchedulerImpl::Run()
             }
             catch(std::exception &e)
             {
-                SET_LAST_ERROR(ErrorCode::kThrowException, "Scheduler %s Throw Exception %s",
-                    m_strSchedulerName.c_str(), e.what());
+                SetLastError(ErrorCode::kThrowException);
             }
         }
         // 使用完再删除，避免taskEx引用失效

@@ -73,6 +73,18 @@ public:
     virtual int32_t GetStats(IJson *pJson) const noexcept = 0;
 };
 
+namespace config
+{
+constexpr const char *kAllocatorName = "allocator_name"; // 分配器名称，类型: string
+constexpr const char *kAllocatorMaxMemoryMB = "allocator_max_memory_mb"; // 最大内存大小(MB)，类型: uint64_t
+}
+
+namespace default_value
+{
+constexpr const char *kAllocatorName = ""; // 分配器名称，默认: ""
+constexpr const uint64_t kAllocatorMaxMemoryMB = 0; // 最大内存大小(MB)，默认: 不限制
+}
+
 }
 }
 

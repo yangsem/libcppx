@@ -1,8 +1,9 @@
 #ifndef __CPPX_THREAD_MANAGER_IMPL_H__
 #define __CPPX_THREAD_MANAGER_IMPL_H__
 
-#include <thread/cppx_thread_manager.h>
-#include <thread/cppx_thread.h>
+#include <cstdint>
+#include <thread/thread_manager.h>
+#include <thread/thread.h>
 #include <mutex>
 #include <vector>
 #include <map>
@@ -28,7 +29,7 @@ public:
     CThreadManagerImpl &operator=(CThreadManagerImpl &&) = delete;
 
     int32_t RegisterThreadEventFunc(ThreadEventFunc pThreadEventFunc, void *pUserParam) noexcept override;
-    
+
     IThread *CreateThread() noexcept override;  
     void DestroyThread(IThread *pThread) noexcept override;
 
@@ -40,6 +41,8 @@ public:
 
     void* GetThreadLocal(int32_t iThreadLocalId, uint64_t uThreadLocalSize) noexcept override;
     int32_t ForEachAllThreadLocal(int32_t iThreadLocalId, IThreadManager::ThreadLocalForEachFunc pThreadLocalForEachFunc, void *pUserParam) noexcept override;
+
+    int32_t GetStats(IJson *pJson) const noexcept override;
 
 private:
     std::atomic<int32_t> m_iThreadLocalId {0};

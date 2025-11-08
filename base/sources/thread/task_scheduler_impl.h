@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include <thread/cppx_task_scheduler.h>
-#include <thread/cppx_thread_manager.h>
+#include <thread/task_scheduler.h>
+#include <thread/thread_manager.h>
 
 namespace cppx
 {
@@ -39,7 +39,7 @@ public:
                             uint32_t uDelayUs, uint32_t uInternalUs) noexcept override;
     int32_t CancleTask(int64_t iTaskID) noexcept override;
 
-    const char *GetStats() noexcept override;
+    int32_t GetStats(IJson *pJson) const noexcept override;
 
 private:
     static bool RunWrapper(void *ptr);

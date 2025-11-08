@@ -1,7 +1,6 @@
-#include "cppx_thread_impl.h"
-#include <utilities/cppx_last_error.h>
-#include <utilities/cppx_error_code.h>
-#include <utilities/cppx_common.h>
+#include "thread_impl.h"
+#include <utilities/error_code.h>
+#include <utilities/common.h>
 
 namespace cppx
 {
@@ -17,7 +16,7 @@ IThread *IThread::Create(const char *pThreadName, IThread::ThreadFunc pThreadFun
 
     if (pThreadFunc == nullptr)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "ThreadFunc is nullptr");
+        SetLastError(ErrorCode::kInvalidParam);
         return nullptr;
     }
 
@@ -54,13 +53,13 @@ int32_t CThreadImpl::Bind(const char *pThreadName, IThread::ThreadFunc pThreadFu
 
     if (pThreadFunc == nullptr)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "ThreadFunc is nullptr");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
     if (m_bRunning)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidCall, "Thread %s is running", m_strThreadName.c_str());
+        SetLastError(ErrorCode::kInvalidCall);
         return ErrorCode::kInvalidCall;
     }
 
@@ -74,7 +73,7 @@ int32_t CThreadImpl::BindCpu(int32_t iCpuNo) noexcept
 {
     if (m_bRunning)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidCall, "Thread %s is running", m_strThreadName.c_str());
+        SetLastError(ErrorCode::kInvalidCall);
         return ErrorCode::kInvalidCall;
     }
 
@@ -82,13 +81,13 @@ int32_t CThreadImpl::BindCpu(int32_t iCpuNo) noexcept
     auto iCpuCount = std::thread::hardware_concurrency();
     if (iCpuNo < 0 || iCpuNo >= (int32_t)iCpuCount)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "CPU number is out of range");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
     if (m_iNodeNo != -1)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "Node number is already set");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
@@ -100,19 +99,19 @@ int32_t CThreadImpl::BindNode(int32_t iNodeNo) noexcept
 {
     if (m_bRunning)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidCall, "Thread %s is running", m_strThreadName.c_str());
+        SetLastError(ErrorCode::kInvalidCall);
         return ErrorCode::kInvalidCall;
     }
 
     if (iNodeNo < 0)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "Node number is out of range");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
     if (m_iCpuNo != -1)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidParam, "CPU number is already set");
+        SetLastError(ErrorCode::kInvalidParam);
         return ErrorCode::kInvalidParam;
     }
 
@@ -124,7 +123,7 @@ int32_t CThreadImpl::Start() noexcept
 {
     if (m_bRunning)
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidCall, "Thread %s is running", m_strThreadName.c_str());
+        SetLastError(ErrorCode::kInvalidCall);
         return ErrorCode::kInvalidCall;
     }
 
@@ -135,7 +134,7 @@ int32_t CThreadImpl::Start() noexcept
     }
     catch(std::exception &e)
     {
-        SET_LAST_ERROR(ErrorCode::kThrowException, "Thread %s start failed: %s", m_strThreadName.c_str(), e.what());
+        SetLastError(ErrorCode::kThrowException);
         return ErrorCode::kThrowException;
     }
     return 0;
@@ -168,8 +167,7 @@ int32_t CThreadImpl::Pause() noexcept
     }
     else
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidCall, "Thread %s is not running, current state is %d", 
-            m_strThreadName.c_str(), (int32_t)state);
+        SetLastError(ErrorCode::kInvalidCall);
         return ErrorCode::kInvalidCall;
     }
     return 0;
@@ -184,8 +182,7 @@ int32_t CThreadImpl::Resume() noexcept
     }
     else
     {
-        SET_LAST_ERROR(ErrorCode::kInvalidCall, "Thread %s is not paused, current state is %d", 
-            m_strThreadName.c_str(), (int32_t)state);
+        SetLastError(ErrorCode::kInvalidCall);
         return ErrorCode::kInvalidCall;
     }
     return 0;
@@ -201,7 +198,7 @@ int32_t CThreadImpl::GetThreadId() const noexcept
     return m_iThreadId;
 }
 
-uint64_t CThreadImpl::GetLastLoopTimeNs() const noexcept
+uint64_t CThreadImpl::GetLastRunTimeNs() const noexcept
 {
     return m_uLastLoopTimeNs;
 }

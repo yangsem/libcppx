@@ -3,7 +3,7 @@
 
 #include <thread>
 #include <string>
-#include <thread/cppx_thread.h>
+#include <thread/thread.h>
 
 namespace cppx
 {
@@ -33,7 +33,7 @@ public:
 
     IThread::ThreadState GetThreadState() const noexcept override;
     int32_t GetThreadId() const noexcept override;
-    uint64_t GetLastLoopTimeNs() const noexcept override;
+    uint64_t GetLastRunTimeNs() const noexcept override;
 private:
     void Run();
 
