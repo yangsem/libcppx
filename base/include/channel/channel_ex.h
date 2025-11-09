@@ -2,6 +2,7 @@
 #define __CPPX_CHANNEL_EX_H__
 
 #include <channel/channel.h>
+#include <utility>
 
 namespace cppx
 {
@@ -10,20 +11,22 @@ namespace base
 namespace channel
 {
 
-class ChannelEx : public IChannel
+template<ChannelType eChannelType>
+class IChannelEx final : public IChannel<eChannelType>
 {
+    using ChannelBase = IChannel<eChannelType>;
 protected:
-    virtual ~ChannelEx() noexcept = default;
+    virtual ~IChannelEx() noexcept = default;
 
 public:
-    static ChannelEx *Create(const ChannelConfig &stConfig) noexcept
+    static IChannelEx *Create(const ChannelConfig *pConfig) noexcept
     {
-        return reinterpret_cast<ChannelEx *>(IChannel::Create(stConfig));
+        return reinterpret_cast<IChannelEx *>(ChannelBase::Create(pConfig));
     }
 
-    static void Destroy(ChannelEx *pChannel) noexcept
+    static void Destroy(IChannelEx *pChannel) noexcept
     {
-        IChannel::Destroy(reinterpret_cast<IChannel *>(pChannel));
+        ChannelBase::Destroy(reinterpret_cast<ChannelBase *>(pChannel));
     }
 
     /**
@@ -35,19 +38,19 @@ public:
     template<typename T>
     int32_t Push(T &&t) noexcept
     {
-        Entry *pEntry = NewEntry();
+        Entry *pEntry = this->NewEntry();
         if (likely(pEntry != nullptr))
         {
             try
             {
                 new (pEntry) T(std::forward<T>(t));
-                PostEntry(pEntry);
+                this->PostEntry(pEntry);
                 return 0;
             }
             catch (const std::exception &e)
             {
                 const_cast<uint16_t &>(pEntry->uFlags) |= kInvalid;
-                DeleteEntry(pEntry);
+                this->DeleteEntry(pEntry);
             }
         }
         return -1;
@@ -62,13 +65,13 @@ public:
     template<typename T>
     int32_t Pop(T &t) noexcept
     {
-        Entry *pEntry = GetEntry();
+        Entry *pEntry = this->GetEntry();
         if (likely(pEntry != nullptr))
         {
             try
             {
                 t = std::move(*reinterpret_cast<T *>(pEntry->data()));
-                DeleteEntry(pEntry);
+                this->DeleteEntry(pEntry);
                 return 0;
             }
             catch (const std::exception &e)

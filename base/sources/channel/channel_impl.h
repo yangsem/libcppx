@@ -10,8 +10,10 @@ namespace base
 namespace channel
 {
 
-class CChannelImpl final : public IChannel
+template<ChannelType eChannelType>
+class CChannelImpl final : public IChannel<eChannelType>
 {
+    using ChannelImpl = IChannel<eChannelType>;
 public:
     CChannelImpl() noexcept = default;
     CChannelImpl(const CChannelImpl &) = delete;

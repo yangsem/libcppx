@@ -123,7 +123,7 @@ int32_t CLoggerImpl::Init(IJson *pConfig) noexcept
         stConfig.eElementType = channel::ElementType::kVariableSize;
         stConfig.eLengthType = channel::LengthType::kBounded;
         stConfig.uMaxElementCount = m_uLogChannelMaxCount;
-        m_pChannel = channel::IChannel::Create(&stConfig);
+        m_pChannel = LogChannel::Create(&stConfig);
         if (m_pChannel == nullptr)
         {
             PRINT_ERROR("init logger failed, create channel failed %s", "");
@@ -180,7 +180,7 @@ void CLoggerImpl::Exit() noexcept
 
     if (m_pChannel != nullptr)
     {
-        channel::IChannel::Destroy(m_pChannel);
+        LogChannel::Destroy(m_pChannel);
         m_pChannel = nullptr;
     }
 

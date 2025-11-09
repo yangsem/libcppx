@@ -18,6 +18,7 @@ namespace base
 
 class CLoggerImpl final : public ILogger
 {
+    using LogChannel = channel::IChannel<channel::ChannelType::kMPSC>;
 public:
     enum class LogItemType : uint8_t
     {
@@ -96,7 +97,7 @@ private:
 
     std::mutex m_lock;
     std::condition_variable m_condition;
-    channel::IChannel *m_pChannel {nullptr};
+    LogChannel *m_pChannel {nullptr};
     uint32_t m_uLogChannelMaxCount {default_value::kLogChannelMaxCount};
 
     bool m_bRunning {false};

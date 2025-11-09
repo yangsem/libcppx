@@ -68,7 +68,8 @@ struct Entry
     static constexpr uint32_t fixedSize() { return sizeof(Entry); }
 };
 
-class EXPORT IChannel
+template<ChannelType eChannelType>
+class IChannel
 {
 protected:
     virtual ~IChannel() noexcept = default;
@@ -141,12 +142,17 @@ public:
 
     /**
      * @brief 获取通道统计信息
-     * @param stStats 统计信息对象
+     * @param pStats 统计信息对象指针
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    int32_t GetStats(QueueStats &stStats) const noexcept;
+    int32_t GetStats(QueueStats *pStats) const noexcept;
 };
+
+extern template class EXPORT IChannel<ChannelType::kSPSC>;
+extern template class EXPORT IChannel<ChannelType::kSPMC>;
+extern template class EXPORT IChannel<ChannelType::kMPSC>;
+extern template class EXPORT IChannel<ChannelType::kMPMC>;
 
 } // namespace channel
 } // namespace base
