@@ -19,7 +19,7 @@ build
 *.pdb
 
 # Compiled Dynamic libraries
-*.so
+*.so*
 *.dylib
 *.dll
 
@@ -40,6 +40,7 @@ build
 
 # debug information files
 *.dwo
+*core.*
 
 # clangd
 .cache
