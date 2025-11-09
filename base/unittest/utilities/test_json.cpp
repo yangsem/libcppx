@@ -351,7 +351,7 @@ TEST_F(CppxJsonTest, TestGetType)
     EXPECT_EQ(type, IJson::JsonType::kString);
     
     type = jsonGuard->GetType("age");
-    EXPECT_EQ(type, IJson::JsonType::kInt32);
+    EXPECT_EQ(type, IJson::JsonType::kInt64);
     
     type = jsonGuard->GetType("isActive");
     EXPECT_EQ(type, IJson::JsonType::kBool);

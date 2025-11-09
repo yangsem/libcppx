@@ -20,8 +20,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # 输出目录设置
-# deps的编译产物放在libcppx/deps/deps
-set(CPPX_DEPS_DIR ${CMAKE_SOURCE_DIR}/deps/deps)
+# deps的编译产物使用其默认路径（不修改）
 # 自有代码的编译产物放在build下（当使用cmake -B build时）
 # 如果CMAKE_BINARY_DIR不是源码目录（即使用了-B参数），则使用CMAKE_BINARY_DIR
 # 否则使用.libcppx（就地构建的情况）
@@ -40,7 +39,6 @@ set(CPPX_TEST_DIR ${CPPX_OUTPUT_ROOT}/test)
 file(MAKE_DIRECTORY ${CPPX_LIB_DIR})
 file(MAKE_DIRECTORY ${CPPX_BIN_DIR})
 file(MAKE_DIRECTORY ${CPPX_TEST_DIR})
-file(MAKE_DIRECTORY ${CPPX_DEPS_DIR})
 
 # 设置默认输出目录（项目库和可执行文件）
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CPPX_BIN_DIR})
@@ -51,7 +49,7 @@ message(STATUS "Output directories:")
 message(STATUS "  lib:  ${CPPX_LIB_DIR}")
 message(STATUS "  bin:  ${CPPX_BIN_DIR}")
 message(STATUS "  test: ${CPPX_TEST_DIR}")
-message(STATUS "  deps: ${CPPX_DEPS_DIR}")
+message(STATUS "  deps: using default paths (not modified)")
 
 # 编译选项
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -199,27 +197,22 @@ endif()
 # 设置deps构建目录（CMake的add_subdirectory会自动处理重复编译问题）
 set(DEPS_BUILD_DIR ${CMAKE_BINARY_DIR}/deps_build)
 
-# ==================== JSONCPP ====================
-# 检查jsoncpp编译产物是否存在
-set(JSONCPP_LIB_NAME "jsoncpp_static")
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(JSONCPP_LIB_FILE "${CPPX_DEPS_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${JSONCPP_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-else()
-    set(JSONCPP_LIB_FILE "${CPPX_DEPS_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${JSONCPP_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-endif()
-
-if(EXISTS ${CMAKE_SOURCE_DIR}/deps/jsoncpp)
-    # 编译deps库前先clean（删除旧的库文件）
-    if(EXISTS ${JSONCPP_LIB_FILE})
-        message(STATUS "Cleaning old jsoncpp library at ${JSONCPP_LIB_FILE}")
-        file(REMOVE ${JSONCPP_LIB_FILE})
+# 检查是否需要编译jsoncpp（任何组件都需要base，base需要jsoncpp）
+set(_NEED_JSONCPP FALSE)
+foreach(COMPONENT ${CPPX_COMPONENT_NAMES})
+    string(TOUPPER ${COMPONENT} COMPONENT_UPPER)
+    if(BUILD_${COMPONENT_UPPER})
+        set(_NEED_JSONCPP TRUE)
+        break()
     endif()
-    message(STATUS "jsoncpp library will be compiled...")
+endforeach()
+
+# ==================== JSONCPP ====================
+if(_NEED_JSONCPP AND EXISTS ${CMAKE_SOURCE_DIR}/deps/jsoncpp)
+    message(STATUS "jsoncpp library will be compiled (using default output path)...")
     
-    # 保存当前的BUILD_SHARED_LIBS值和输出目录
+    # 保存当前的BUILD_SHARED_LIBS值和编译选项
     set(SAVED_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
-    set(SAVED_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
-    set(SAVED_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
     set(SAVED_POSITION_INDEPENDENT_CODE ${CMAKE_POSITION_INDEPENDENT_CODE})
     set(SAVED_CXX_STANDARD ${CMAKE_CXX_STANDARD})
     
@@ -240,17 +233,31 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/deps/jsoncpp)
     set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "Disable C++ extensions for jsoncpp" FORCE)
     message(STATUS "jsoncpp will use C++ standard: ${CMAKE_CXX_STANDARD}")
     
-    # 设置jsoncpp的输出目录为libcppx/deps/deps（静态库）
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CPPX_DEPS_DIR})
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CPPX_DEPS_DIR})
+    # 使用add_subdirectory方式，deps使用其默认输出路径
+    # 编译deps库前先clean（清理构建目录）
+    if(EXISTS ${DEPS_BUILD_DIR}/jsoncpp)
+        message(STATUS "Cleaning jsoncpp build directory...")
+        file(REMOVE_RECURSE ${DEPS_BUILD_DIR}/jsoncpp)
+    endif()
     
-    # 使用add_subdirectory方式，CMake会自动处理重复编译问题
-    # 如果库文件已存在且源文件未改变，CMake不会重新编译
     add_subdirectory(${CMAKE_SOURCE_DIR}/deps/jsoncpp ${DEPS_BUILD_DIR}/jsoncpp)
     
-    # 恢复输出目录
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${SAVED_LIBRARY_OUTPUT_DIRECTORY})
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${SAVED_ARCHIVE_OUTPUT_DIRECTORY})
+    # 强制设置jsoncpp目标的C++标准（jsoncpp的CMakeLists.txt会设置C++11，需要覆盖）
+    if(TARGET jsoncpp_static)
+        set_target_properties(jsoncpp_static PROPERTIES
+            CXX_STANDARD ${CMAKE_CXX_STANDARD}
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS OFF
+        )
+        message(STATUS "jsoncpp_static target set to use C++ standard: ${CMAKE_CXX_STANDARD}")
+    endif()
+    if(TARGET jsoncpp_object)
+        set_target_properties(jsoncpp_object PROPERTIES
+            CXX_STANDARD ${CMAKE_CXX_STANDARD}
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS OFF
+        )
+    endif()
     
     # 恢复BUILD_SHARED_LIBS的值（如果之前设置过）
     if(DEFINED SAVED_BUILD_SHARED_LIBS)
@@ -271,7 +278,7 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/deps/jsoncpp)
     set(JSONCPP_LIBRARIES jsoncpp_static)
     set(JSONCPP_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/deps/jsoncpp/include)
     message(STATUS "Using bundled jsoncpp from deps/jsoncpp")
-else()
+elseif(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/jsoncpp)
     message(FATAL_ERROR "jsoncpp not found. Please ensure deps/jsoncpp exists. Run: git submodule update --init --recursive")
 endif()
 
@@ -288,38 +295,13 @@ endforeach()
 
 if(BUILD_TESTS OR _NEED_GTEST)
     if(EXISTS ${CMAKE_SOURCE_DIR}/deps/googletest)
-        # 检查googletest编译产物是否存在
-        set(GTEST_LIB_NAME "gtest")
-        set(GTEST_MAIN_LIB_NAME "gtest_main")
-        if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-            set(GTEST_LIB_FILE "${CPPX_DEPS_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${GTEST_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-            set(GTEST_MAIN_LIB_FILE "${CPPX_DEPS_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${GTEST_MAIN_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        else()
-            set(GTEST_LIB_FILE "${CPPX_DEPS_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${GTEST_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-            set(GTEST_MAIN_LIB_FILE "${CPPX_DEPS_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${GTEST_MAIN_LIB_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        endif()
+        message(STATUS "googletest libraries will be compiled (using default output path)...")
         
-        # 编译deps库前先clean（删除旧的库文件）
-        if(EXISTS ${GTEST_LIB_FILE})
-            message(STATUS "Cleaning old googletest library at ${GTEST_LIB_FILE}")
-            file(REMOVE ${GTEST_LIB_FILE})
-        endif()
-        if(EXISTS ${GTEST_MAIN_LIB_FILE})
-            message(STATUS "Cleaning old googletest_main library at ${GTEST_MAIN_LIB_FILE}")
-            file(REMOVE ${GTEST_MAIN_LIB_FILE})
-        endif()
-        message(STATUS "googletest libraries will be compiled...")
-        
-        # 保存当前的输出目录和BUILD_SHARED_LIBS
-        set(SAVED_LIBRARY_OUTPUT_DIRECTORY_GTEST ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
-        set(SAVED_ARCHIVE_OUTPUT_DIRECTORY_GTEST ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
+        # 保存当前的BUILD_SHARED_LIBS值和编译选项
         set(SAVED_BUILD_SHARED_LIBS_GTEST ${BUILD_SHARED_LIBS})
         set(SAVED_POSITION_INDEPENDENT_CODE_GTEST ${CMAKE_POSITION_INDEPENDENT_CODE})
         set(SAVED_CXX_STANDARD_GTEST ${CMAKE_CXX_STANDARD})
         
-        # 设置googletest的输出目录为libcppx/deps/deps（静态库）
-        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CPPX_DEPS_DIR})
-        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CPPX_DEPS_DIR})
         # 确保googletest构建静态库（googletest默认就是静态库，但明确设置以确保）
         set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build googletest shared library" FORCE)
         # 禁用googletest的测试（googletest默认不编译测试，但明确设置以确保）
@@ -334,14 +316,45 @@ if(BUILD_TESTS OR _NEED_GTEST)
         set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "Disable C++ extensions for googletest" FORCE)
         message(STATUS "googletest will use C++ standard: ${CMAKE_CXX_STANDARD}")
         
-        # 使用add_subdirectory方式，CMake会自动处理重复编译问题
-        # 如果库文件已存在且源文件未改变，CMake不会重新编译
-        # EXCLUDE_FROM_ALL确保googletest不会在all目标中构建，只在需要时构建
-        add_subdirectory(${CMAKE_SOURCE_DIR}/deps/googletest ${DEPS_BUILD_DIR}/googletest EXCLUDE_FROM_ALL)
+        # 使用add_subdirectory方式，deps使用其默认输出路径
+        # 编译deps库前先clean（清理构建目录）
+        if(EXISTS ${DEPS_BUILD_DIR}/googletest)
+            message(STATUS "Cleaning googletest build directory...")
+            file(REMOVE_RECURSE ${DEPS_BUILD_DIR}/googletest)
+        endif()
         
-        # 恢复输出目录和BUILD_SHARED_LIBS
-        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${SAVED_LIBRARY_OUTPUT_DIRECTORY_GTEST})
-        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${SAVED_ARCHIVE_OUTPUT_DIRECTORY_GTEST})
+        add_subdirectory(${CMAKE_SOURCE_DIR}/deps/googletest ${DEPS_BUILD_DIR}/googletest)
+        
+        # 强制设置googletest目标的C++标准（确保与主项目一致）
+        if(TARGET gtest)
+            set_target_properties(gtest PROPERTIES
+                CXX_STANDARD ${CMAKE_CXX_STANDARD}
+                CXX_STANDARD_REQUIRED ON
+                CXX_EXTENSIONS OFF
+            )
+        endif()
+        if(TARGET gtest_main)
+            set_target_properties(gtest_main PROPERTIES
+                CXX_STANDARD ${CMAKE_CXX_STANDARD}
+                CXX_STANDARD_REQUIRED ON
+                CXX_EXTENSIONS OFF
+            )
+        endif()
+        if(TARGET gmock)
+            set_target_properties(gmock PROPERTIES
+                CXX_STANDARD ${CMAKE_CXX_STANDARD}
+                CXX_STANDARD_REQUIRED ON
+                CXX_EXTENSIONS OFF
+            )
+        endif()
+        if(TARGET gmock_main)
+            set_target_properties(gmock_main PROPERTIES
+                CXX_STANDARD ${CMAKE_CXX_STANDARD}
+                CXX_STANDARD_REQUIRED ON
+                CXX_EXTENSIONS OFF
+            )
+        endif()
+        
         # 恢复BUILD_SHARED_LIBS
         if(DEFINED SAVED_BUILD_SHARED_LIBS_GTEST)
             set(BUILD_SHARED_LIBS ${SAVED_BUILD_SHARED_LIBS_GTEST} CACHE BOOL "Build shared libraries" FORCE)

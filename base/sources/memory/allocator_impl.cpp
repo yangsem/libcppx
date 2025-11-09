@@ -59,11 +59,8 @@ void IAllocator::Destroy(IAllocator *pAllocator) noexcept
 
 int32_t CAllocatorImpl::Init(const IJson *pConfig) noexcept
 {
-    if (pConfig == nullptr)
-    {
-        return ErrorCode::kInvalidParam;
-    }
-
+    // 允许pConfig为nullptr，使用默认配置
+    (void)pConfig;
     return ErrorCode::kSuccess;
 }
 

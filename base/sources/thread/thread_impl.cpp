@@ -14,12 +14,8 @@ IThread *IThread::Create(const char *pThreadName, IThread::ThreadFunc pThreadFun
         pThreadName = "";
     }
 
-    if (pThreadFunc == nullptr)
-    {
-        SetLastError(ErrorCode::kInvalidParam);
-        return nullptr;
-    }
-
+    // 允许pThreadFunc为nullptr，后续可以通过Bind方法绑定线程函数
+    // 这是为了支持CThreadManagerImpl::CreateThread()的使用场景
     CThreadImpl *pThread = NEW CThreadImpl(pThreadName, pThreadFunc, pThreadArg);
     return pThread;
 }
@@ -125,6 +121,13 @@ int32_t CThreadImpl::Start() noexcept
     {
         SetLastError(ErrorCode::kInvalidCall);
         return ErrorCode::kInvalidCall;
+    }
+
+    // 检查线程函数是否已绑定
+    if (m_pThreadFunc == nullptr)
+    {
+        SetLastError(ErrorCode::kInvalidParam);
+        return ErrorCode::kInvalidParam;
     }
 
     try

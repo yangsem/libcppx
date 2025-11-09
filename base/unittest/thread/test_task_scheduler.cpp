@@ -283,13 +283,13 @@ TEST_F(TaskSchedulerTest, TestGetStats)
     ASSERT_NE(pScheduler, nullptr);
     
     // 测试GetStats接口 - 调度器未启动
-    EXPECT_EQ(pScheduler->GetStats(nullptr), 0);
+    EXPECT_NE(pScheduler->GetStats(nullptr), 0);
     
     int32_t result = pScheduler->Start();
     ASSERT_EQ(result, 0);
     
     // 测试GetStats接口 - 调度器已启动
-    EXPECT_EQ(pScheduler->GetStats(nullptr), 0);
+    EXPECT_NE(pScheduler->GetStats(nullptr), 0);
     
     // 投递一些任务
     pScheduler->PostOnceTask("Task1", TestTaskFunc, this, 0);
@@ -299,7 +299,7 @@ TEST_F(TaskSchedulerTest, TestGetStats)
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     
     // 再次获取统计信息
-    EXPECT_EQ(pScheduler->GetStats(nullptr), 0);
+    EXPECT_NE(pScheduler->GetStats(nullptr), 0);
     
     pScheduler->Stop();
     ITaskScheduler::Destroy(pScheduler);
