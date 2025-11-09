@@ -11,22 +11,23 @@ namespace base
 namespace channel
 {
 
-template<ChannelType eChannelType>
-class IChannelEx final : public IChannel<eChannelType>
+template<typename T, ChannelType eChannelType, LengthType eLengthType>
+class IChannelEx final : public IChannel<eChannelType, ElementType::kFixedSize, eLengthType>
 {
-    using ChannelBase = IChannel<eChannelType>;
+    using ChannelType = IChannel<eChannelType, ElementType::kFixedSize, eLengthType>;
 protected:
     virtual ~IChannelEx() noexcept = default;
 
 public:
     static IChannelEx *Create(const ChannelConfig *pConfig) noexcept
     {
-        return reinterpret_cast<IChannelEx *>(ChannelBase::Create(pConfig));
+        const_cast<ChannelConfig *>(pConfig)->uElementSize = sizeof(T);
+        return reinterpret_cast<IChannelEx *>(ChannelType::Create(pConfig));
     }
 
     static void Destroy(IChannelEx *pChannel) noexcept
     {
-        ChannelBase::Destroy(reinterpret_cast<ChannelBase *>(pChannel));
+        ChannelType::Destroy(reinterpret_cast<ChannelType *>(pChannel));
     }
 
     /**
@@ -35,22 +36,20 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    template<typename T>
     int32_t Push(T &&t) noexcept
     {
-        Entry *pEntry = this->NewEntry();
-        if (likely(pEntry != nullptr))
+        auto pData = this->New();
+        if (likely(pData != nullptr))
         {
             try
             {
-                new (pEntry) T(std::forward<T>(t));
-                this->PostEntry(pEntry);
+                new (pData) T(std::forward<T>(t));
+                this->Post(pData);
                 return 0;
             }
             catch (const std::exception &e)
             {
-                const_cast<uint16_t &>(pEntry->uFlags) |= kInvalid;
-                this->DeleteEntry(pEntry);
+                this->Post(pData, false);
             }
         }
         return -1;
@@ -62,16 +61,15 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    template<typename T>
     int32_t Pop(T &t) noexcept
     {
-        Entry *pEntry = this->GetEntry();
-        if (likely(pEntry != nullptr))
+        auto pData = this->Get();
+        if (likely(pData != nullptr))
         {
             try
             {
-                t = std::move(*reinterpret_cast<T *>(pEntry->data()));
-                this->DeleteEntry(pEntry);
+                t = std::move(*reinterpret_cast<T *>(pData));
+                this->Delete(pData);
                 return 0;
             }
             catch (const std::exception &e)

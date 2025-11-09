@@ -20,23 +20,20 @@ enum class ChannelType : uint8_t
     kMPMC,     // 多生产者多消费者
 };
 
-enum class LengthType : uint8_t
-{
-    kBounded = 0, // 有界
-    kUnbounded,   // 无界
-};
-
 enum class ElementType : uint8_t
 {
     kFixedSize = 0, // 固定大小
-    kVariableSize,  // 变长
+    kVariableSize,  // 动态大小
+};
+
+enum class LengthType : uint8_t
+{
+    kBounded = 0, // 固定长度
+    kUnbounded,   // 动态长度
 };
 
 struct ChannelConfig 
 {
-    ChannelType eChannelType;
-    LengthType eLengthType;
-    ElementType eElementType;
     uint32_t uElementSize;
     uint32_t uMaxElementCount;
     uint32_t uTotalMemorySizeMB;
@@ -52,23 +49,7 @@ struct QueueStats
     uint32_t uPopFailCount;     // 出队失败次数
 };
 
-enum EntryFlag : uint16_t
-{
-    kInvalid = 1 << 0,
-};
-
-struct Entry
-{
-    const uint16_t uMagic;
-    const uint16_t uFlags;
-    const uint32_t uSize;
-
-    uint8_t *data() { return reinterpret_cast<uint8_t *>(this + 1); }
-
-    static constexpr uint32_t fixedSize() { return sizeof(Entry); }
-};
-
-template<ChannelType eChannelType>
+template<ChannelType eChannelType, ElementType eElementType, LengthType eLengthType>
 class IChannel
 {
 protected:
@@ -95,36 +76,37 @@ public:
      * @return 成功返回元素指针，失败返回nullptr
      * @note 多线程安全
      */
-    Entry *NewEntry() noexcept;
+    void *New() noexcept;
 
     /**
      * @brief 创建一个元素
-     * @param uElementSize 元素大小
+     * @param uSize 元素大小
      * @return 成功返回元素指针，失败返回nullptr
      * @note 多线程安全
      */
-    Entry *NewEntry(uint32_t uElementSize) noexcept;
+    void *New(uint32_t uSize) noexcept;
 
     /**
      * @brief 发布一个元素
-     * @param pEntry 元素指针
+     * @param pData 元素指针
+     * @param bValid 元素是否有效
      * @note 多线程安全
      */
-    void PostEntry(Entry *pEntry) noexcept;
+    void Post(void *pData, bool bValid = true) noexcept;
 
     /**
      * @brief 获取一个元素
      * @return 成功返回元素指针，失败返回nullptr
      * @note 多线程安全
      */
-    Entry *GetEntry() noexcept;
+    void *Get() noexcept;
 
     /**
      * @brief 释放一个元素
-     * @param pEntry 元素指针
+     * @param pData 元素指针
      * @note 多线程安全
      */
-    void DeleteEntry(Entry *pEntry) noexcept;
+    void Delete(void *pData) noexcept;
 
     /**
      * @brief 判断通道是否为空
@@ -149,10 +131,45 @@ public:
     int32_t GetStats(QueueStats *pStats) const noexcept;
 };
 
-extern template class EXPORT IChannel<ChannelType::kSPSC>;
-extern template class EXPORT IChannel<ChannelType::kSPMC>;
-extern template class EXPORT IChannel<ChannelType::kMPSC>;
-extern template class EXPORT IChannel<ChannelType::kMPMC>;
+extern template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kBounded>;
+extern template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kUnbounded>;
+extern template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kBounded>;
+extern template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kUnbounded>;
+
+extern template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kFixedSize, LengthType::kBounded>;
+extern template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kFixedSize, LengthType::kUnbounded>;
+extern template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kVariableSize, LengthType::kBounded>;
+extern template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kVariableSize, LengthType::kUnbounded>;
+
+extern template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kFixedSize, LengthType::kBounded>;
+extern template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kFixedSize, LengthType::kUnbounded>;
+extern template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kVariableSize, LengthType::kBounded>;
+extern template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kVariableSize, LengthType::kUnbounded>;
+
+extern template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kFixedSize, LengthType::kBounded>;
+extern template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kFixedSize, LengthType::kUnbounded>;
+extern template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kVariableSize, LengthType::kBounded>;
+extern template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kVariableSize, LengthType::kUnbounded>;
+
+using SPSCFixedBoundedChannel = IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kBounded>;
+using SPSCFixedUnboundedChannel = IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kUnbounded>;
+using SPSCVariableBoundedChannel = IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kBounded>;
+using SPSCVariableUnboundedChannel = IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kUnbounded>;
+
+using SPMCFixedBoundedChannel = IChannel<ChannelType::kSPMC, ElementType::kFixedSize, LengthType::kBounded>;
+using SPMCFixedUnboundedChannel = IChannel<ChannelType::kSPMC, ElementType::kFixedSize, LengthType::kUnbounded>;
+using SPMCVariableBoundedChannel = IChannel<ChannelType::kSPMC, ElementType::kVariableSize, LengthType::kBounded>;
+using SPMCVariableUnboundedChannel = IChannel<ChannelType::kSPMC, ElementType::kVariableSize, LengthType::kUnbounded>;
+
+using MPSCFixedBoundedChannel = IChannel<ChannelType::kMPSC, ElementType::kFixedSize, LengthType::kBounded>;
+using MPSCFixedUnboundedChannel = IChannel<ChannelType::kMPSC, ElementType::kFixedSize, LengthType::kUnbounded>;
+using MPSCVariableBoundedChannel = IChannel<ChannelType::kMPSC, ElementType::kVariableSize, LengthType::kBounded>;
+using MPSCVariableUnboundedChannel = IChannel<ChannelType::kMPSC, ElementType::kVariableSize, LengthType::kUnbounded>;
+
+using MPMCFixedBoundedChannel = IChannel<ChannelType::kMPMC, ElementType::kFixedSize, LengthType::kBounded>;
+using MPMCFixedUnboundedChannel = IChannel<ChannelType::kMPMC, ElementType::kFixedSize, LengthType::kUnbounded>;
+using MPMCVariableBoundedChannel = IChannel<ChannelType::kMPMC, ElementType::kVariableSize, LengthType::kBounded>;
+using MPMCVariableUnboundedChannel = IChannel<ChannelType::kMPMC, ElementType::kVariableSize, LengthType::kUnbounded>;
 
 } // namespace channel
 } // namespace base
