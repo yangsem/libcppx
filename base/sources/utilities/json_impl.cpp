@@ -162,7 +162,13 @@ T CJsonImpl::GetValue(const char *pKey, T defaultValue) const noexcept
 {
     if (likely(pKey != nullptr && m_jsonValue.isMember(pKey)))
     {
-        return m_jsonValue[pKey].as<T>();
+        try
+        {
+            return m_jsonValue[pKey].as<T>();
+        }
+        catch (std::exception &e)
+        {
+        }
     }
 
     return defaultValue;
@@ -452,7 +458,13 @@ T CJsonImpl::GetValue(uint32_t iIndex, T defaultValue) const noexcept
 {
     if (likely(m_jsonValue.isArray() && iIndex < m_jsonValue.size()))
     {
-        return m_jsonValue[iIndex].as<T>();
+        try
+        {
+            return m_jsonValue[iIndex].as<T>();
+        }
+        catch (std::exception &e)
+        {
+        }
     }
 
     return defaultValue;

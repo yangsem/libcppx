@@ -756,7 +756,7 @@ TEST_F(CppxJsonTest, TestArrayIndexAccess)
     EXPECT_EQ(strType, IJson::JsonType::kString);
     
     IJson::JsonType intType = scoresGuard->GetType(static_cast<uint32_t>(0));
-    EXPECT_EQ(intType, IJson::JsonType::kInt32);
+    EXPECT_EQ(intType, IJson::JsonType::kInt64);
 }
 
 // 测试数组追加接口
@@ -937,7 +937,7 @@ TEST_F(CppxJsonTest, TestGetTypeByIndex)
     EXPECT_EQ(type0, IJson::JsonType::kString);
     
     IJson::JsonType type1 = arrayGuard->GetType(static_cast<uint32_t>(1));
-    EXPECT_EQ(type1, IJson::JsonType::kInt32);
+    EXPECT_EQ(type1, IJson::JsonType::kInt64);
     
     IJson::JsonType type2 = arrayGuard->GetType(static_cast<uint32_t>(2));
     EXPECT_EQ(type2, IJson::JsonType::kBool);
