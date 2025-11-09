@@ -2,13 +2,13 @@
 #define __CPPX_COMMON_H__
 
 #include <cstdint>
-#include <stdio.h>
+#include <cstdio>
 #include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <errno.h>
-#include <assert.h>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <cerrno>
+#include <cassert>
 
 #include <utilities/export.h>
 

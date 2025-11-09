@@ -33,9 +33,9 @@ void IThread::Destroy(IThread *pThread) noexcept
 }
 
 CThreadImpl::CThreadImpl(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadArg)
-    : m_strThreadName(pThreadName)
-    , m_pThreadFunc(pThreadFunc)
+    : m_pThreadFunc(pThreadFunc)
     , m_pThreadArg(pThreadArg)
+    , m_strThreadName(pThreadName)
 {
 }
 

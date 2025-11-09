@@ -113,9 +113,18 @@ if(BUILD_BASE_TESTS)
             ${CMAKE_CURRENT_SOURCE_DIR}/sources
     )
     
-    # 设置输出目录（统一放在.libcppx/test）
-    set_target_properties(cppx_base_unittest PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/.libcppx/test
-    )
+    # 设置输出目录（使用全局定义的测试输出目录）
+    # 如果CPPX_TEST_DIR已定义（从顶层CMakeLists.txt），则使用它
+    # 顶层构建时：build/test（使用cmake -B build）或 .libcppx/test（就地构建）
+    # 独立编译时：使用默认的.libcppx/test
+    if(DEFINED CPPX_TEST_DIR)
+        set_target_properties(cppx_base_unittest PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${CPPX_TEST_DIR}
+        )
+    else()
+        set_target_properties(cppx_base_unittest PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/.libcppx/test
+        )
+    endif()
 endif()
 

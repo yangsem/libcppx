@@ -44,11 +44,21 @@ elseif(TARGET cppx_base)
 else()
     # 如果base未编译，尝试查找项目根目录下的base库
     # 只查找项目目录，不在系统路径查找
+    # 支持新的输出目录结构：build/lib 或 .libcppx/lib
+    set(CPPX_BASE_LIB_SEARCH_PATHS
+        ${CMAKE_SOURCE_DIR}/.libcppx/lib
+        ${CMAKE_BINARY_DIR}/lib
+        ${CMAKE_BINARY_DIR}/../.libcppx/lib
+        ${CMAKE_SOURCE_DIR}/../.libcppx/lib
+    )
+    # 如果CPPX_LIB_DIR已定义（从顶层CMakeLists.txt），也添加到搜索路径
+    if(DEFINED CPPX_LIB_DIR)
+        list(INSERT CPPX_BASE_LIB_SEARCH_PATHS 0 ${CPPX_LIB_DIR})
+    endif()
+    
     find_library(CPPX_BASE_LIB 
         NAMES cppx_base libcppx_base
-        PATHS ${CMAKE_SOURCE_DIR}/.libcppx/lib
-              ${CMAKE_BINARY_DIR}/../.libcppx/lib
-              ${CMAKE_SOURCE_DIR}/../.libcppx/lib
+        PATHS ${CPPX_BASE_LIB_SEARCH_PATHS}
         NO_DEFAULT_PATH
     )
     
@@ -166,10 +176,18 @@ if(BUILD_NETWORK_TESTS)
             )
         endif()
         
-        # 设置输出目录（统一放在.libcppx/test）
-        set_target_properties(cppx_network_unittest PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/.libcppx/test
-        )
+        # 设置输出目录（使用全局定义的测试输出目录）
+        # 如果CPPX_TEST_DIR已定义（从顶层CMakeLists.txt），则使用它
+        # 否则使用默认的.libcppx/test（独立编译的情况）
+        if(DEFINED CPPX_TEST_DIR)
+            set_target_properties(cppx_network_unittest PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY ${CPPX_TEST_DIR}
+            )
+        else()
+            set_target_properties(cppx_network_unittest PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/.libcppx/test
+            )
+        endif()
     else()
         message(STATUS "No network test sources found, skipping network unittest")
     endif()

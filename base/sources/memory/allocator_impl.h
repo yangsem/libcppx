@@ -19,11 +19,11 @@ public:
 
     ~CAllocatorImpl() noexcept override = default;
 
-    int32_t Init(IJson *pConfig) noexcept override;
+    int32_t Init(const IJson *pConfig) noexcept override;
     void Exit() noexcept override;
 
-    void *New(uint64_t uSize) noexcept override;
-    void Delete(void *pMem) noexcept override;
+    void *Malloc(uint64_t uSize) noexcept override;
+    void Free(const void *pMem) noexcept override;
 
     int32_t GetStats(IJson *pJson) const noexcept override;
 

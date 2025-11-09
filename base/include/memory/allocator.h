@@ -41,7 +41,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    virtual int32_t Init(IJson *pConfig) noexcept = 0;
+    virtual int32_t Init(const IJson *pConfig) noexcept = 0;
     
     /**
      * @brief 清理IAllocator对象资源
@@ -55,14 +55,14 @@ public:
      * @return 成功返回内存指针，失败返回nullptr
      * @note 多线程安全
      */
-    virtual void *New(uint64_t uSize) noexcept = 0;
+    virtual void *Malloc(uint64_t uSize) noexcept = 0;
     
     /**
      * @brief 释放内存
      * @param pMem 内存指针
      * @note 多线程安全
      */
-    virtual void Delete(void *pMem) noexcept = 0;
+    virtual void Free(const void *pMem) noexcept = 0;
 
     /**
      * @brief 获取统计信息

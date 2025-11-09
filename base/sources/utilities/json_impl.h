@@ -92,8 +92,8 @@ private:
     int32_t AppendValue(T &value) noexcept;
 
 private:
-    Json::Value &m_jsonValue;     // 根对象指向m_jsonValueData，否则指向m_jsonValueData的子对象
     Json::Value m_jsonValueData;  // 当前对象为根对象时有效
+    Json::Value &m_jsonValue;     // 根对象指向m_jsonValueData，否则指向m_jsonValueData的子对象
     mutable bool m_bRoot{true};
     mutable std::vector<CJsonImpl *> m_vecJsonValues;
     mutable std::string m_strJsonString;

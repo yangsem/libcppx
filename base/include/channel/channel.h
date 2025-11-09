@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <cstdint>
-#include <utility>
 #include <utilities/common.h>
 
 namespace cppx
@@ -40,6 +39,7 @@ struct ChannelConfig
     ElementType eElementType;
     uint32_t uElementSize;
     uint32_t uMaxElementCount;
+    uint32_t uTotalMemorySizeMB;
 };
 
 struct QueueStats
@@ -62,7 +62,10 @@ struct Entry
     const uint16_t uMagic;
     const uint16_t uFlags;
     const uint32_t uSize;
-    uint8_t pData[0];
+
+    uint8_t *data() { return reinterpret_cast<uint8_t *>(this + 1); }
+
+    static constexpr uint32_t fixedSize() { return sizeof(Entry); }
 };
 
 class EXPORT IChannel
@@ -142,7 +145,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    virtual int32_t GetStats(QueueStats &stStats) const noexcept = 0;
+    int32_t GetStats(QueueStats &stStats) const noexcept;
 };
 
 } // namespace channel

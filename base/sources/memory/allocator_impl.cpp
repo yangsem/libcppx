@@ -57,8 +57,13 @@ void IAllocator::Destroy(IAllocator *pAllocator) noexcept
     }
 }
 
-int32_t CAllocatorImpl::Init(IJson *pConfig) noexcept
+int32_t CAllocatorImpl::Init(const IJson *pConfig) noexcept
 {
+    if (pConfig == nullptr)
+    {
+        return ErrorCode::kInvalidParam;
+    }
+
     return ErrorCode::kSuccess;
 }
 
@@ -66,16 +71,16 @@ void CAllocatorImpl::Exit() noexcept
 {
 }
 
-void *CAllocatorImpl::New(uint64_t uSize) noexcept
+void *CAllocatorImpl::Malloc(uint64_t uSize) noexcept
 {
     return std::malloc(uSize);
 }
 
-void CAllocatorImpl::Delete(void *pMem) noexcept
+void CAllocatorImpl::Free(const void *pMem) noexcept
 {
     if (pMem != nullptr)
     {
-        std::free(pMem);
+        std::free(const_cast<void *>(pMem));
     }
 }
 

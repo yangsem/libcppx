@@ -1,10 +1,12 @@
 #ifndef __CPPX_LOGGER_IMPL_H__
 #define __CPPX_LOGGER_IMPL_H__
 
+#include "memory/allocator.h"
 #include <cstdint>
 #include <logger/logger.h>
 #include <thread/thread_manager.h>
 #include <channel/channel.h>
+#include <memory/allocator_ex.h>
 #include <cstdio>
 #include <condition_variable>
 #include <string>
@@ -47,9 +49,9 @@ public:
         const char *pFileLine;
         const char *pFunction;
         const char *pFormat;
-        const char **ppParams;
+        char **ppParams;
 
-        bool CopyParams(const char **ppParams, uint32_t uParamCount) noexcept;
+        void CopyParams(IAllocator *pAllocator, const char **ppParams, uint32_t uParamCount) noexcept;
     };
 
 public:
@@ -89,6 +91,7 @@ private:
     bool m_bAsync {false};
     uint32_t m_uPid {UINT32_MAX};
     static thread_local uint32_t m_uTid;
+    IAllocator *m_pAllocator {nullptr};
     uint32_t m_uLogFormatBufferSize {default_value::kLogFormatBufferSize};
 
     std::mutex m_lock;

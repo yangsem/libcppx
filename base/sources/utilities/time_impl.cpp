@@ -257,6 +257,7 @@ int32_t ITime::GetTimeZone() noexcept
 
 int32_t ITime::SetTimeZone(int32_t iTimeZone) noexcept
 {
+    (void)iTimeZone;
     return ErrorCode::kInvalidCall;
 }
 

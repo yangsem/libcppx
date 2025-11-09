@@ -10,23 +10,23 @@ namespace cppx
 namespace base
 {
 
-class AllocatorEx : public IAllocator
+class IAllocatorEx : public IAllocator
 {
 protected:
-    virtual ~AllocatorEx() noexcept = default;
+    virtual ~IAllocatorEx() noexcept = default;
 
 public:
-    static AllocatorEx *GetInstance() noexcept
+    static IAllocatorEx *GetInstance() noexcept
     {
-        return reinterpret_cast<AllocatorEx *>(IAllocator::GetInstance());
+        return reinterpret_cast<IAllocatorEx *>(IAllocator::GetInstance());
     }
 
-    static AllocatorEx *Create() noexcept
+    static IAllocatorEx *Create() noexcept
     {
-        return reinterpret_cast<AllocatorEx *>(IAllocator::Create());
+        return reinterpret_cast<IAllocatorEx *>(IAllocator::Create());
     }
 
-    static void Destroy(AllocatorEx *pAllocator) noexcept
+    static void Destroy(IAllocatorEx *pAllocator) noexcept
     {
         IAllocator::Destroy(reinterpret_cast<IAllocator *>(pAllocator));
     }
@@ -34,7 +34,7 @@ public:
     template<typename T, typename... Args>
     T *New(Args&&... args) noexcept
     {
-        auto pMem = IAllocator::New(sizeof(T));
+        auto pMem = Malloc(sizeof(T));
         if (likely(pMem != nullptr))
         {
             try
@@ -43,7 +43,7 @@ public:
             }
             catch (std::exception &e)
             {
-                IAllocator::Delete(pMem);
+                Free(pMem);
                 return nullptr;
             }
         }
@@ -56,7 +56,7 @@ public:
         if (likely(pMem != nullptr))
         {
             pMem->~T();
-            IAllocator::Delete(pMem);
+            Free(pMem);
         }
     }
 };

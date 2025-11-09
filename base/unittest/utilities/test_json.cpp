@@ -3,6 +3,7 @@
 #include <fstream>
 #include <cstring>
 #include <climits>
+#include <cstdint>
 #include <thread>
 #include <vector>
 
@@ -1090,5 +1091,475 @@ TEST_F(CppxJsonTest, TestArrayObjectMixedOperations)
     const char* subStr2 = arr->GetString(static_cast<uint32_t>(1));
     ASSERT_NE(subStr2, nullptr);
     EXPECT_STREQ(subStr2, "子数组元素2");
+}
+
+// 测试GetInt64、GetUint32、GetUint64、GetDouble接口（通过key）
+TEST_F(CppxJsonTest, TestGetNumericTypesByKey)
+{
+    JsonGuard jsonGuard;
+    ASSERT_NE(jsonGuard.get(), nullptr);
+    
+    // 设置各种数值类型
+    jsonGuard->SetInt64("int64Value", INT64_MAX);
+    jsonGuard->SetUint32("uint32Value", UINT32_MAX);
+    jsonGuard->SetUint64("uint64Value", UINT64_MAX);
+    jsonGuard->SetDouble("doubleValue", 3.141592653589793);
+    
+    // 测试GetInt64
+    int64_t int64Val = jsonGuard->GetInt64("int64Value");
+    EXPECT_EQ(int64Val, INT64_MAX);
+    
+    int64_t int64Default = jsonGuard->GetInt64("nonexistent", -1);
+    EXPECT_EQ(int64Default, -1);
+    
+    // 测试GetUint32
+    uint32_t uint32Val = jsonGuard->GetUint32("uint32Value");
+    EXPECT_EQ(uint32Val, UINT32_MAX);
+    
+    uint32_t uint32Default = jsonGuard->GetUint32("nonexistent", 999);
+    EXPECT_EQ(uint32Default, 999);
+    
+    // 测试GetUint64
+    uint64_t uint64Val = jsonGuard->GetUint64("uint64Value");
+    EXPECT_EQ(uint64Val, UINT64_MAX);
+    
+    uint64_t uint64Default = jsonGuard->GetUint64("nonexistent", 888);
+    EXPECT_EQ(uint64Default, 888);
+    
+    // 测试GetDouble
+    double doubleVal = jsonGuard->GetDouble("doubleValue");
+    EXPECT_DOUBLE_EQ(doubleVal, 3.141592653589793);
+    
+    double doubleDefault = jsonGuard->GetDouble("nonexistent", 2.718);
+    EXPECT_DOUBLE_EQ(doubleDefault, 2.718);
+}
+
+// 测试SetInt64、SetUint32、SetUint64、SetDouble接口
+TEST_F(CppxJsonTest, TestSetNumericTypes)
+{
+    JsonGuard jsonGuard;
+    ASSERT_NE(jsonGuard.get(), nullptr);
+    
+    // 测试SetInt64
+    int32_t result = jsonGuard->SetInt64("int64Key", INT64_MIN);
+    EXPECT_EQ(result, 0);
+    int64_t int64Val = jsonGuard->GetInt64("int64Key");
+    EXPECT_EQ(int64Val, INT64_MIN);
+    
+    // 测试SetUint32
+    result = jsonGuard->SetUint32("uint32Key", 4294967295U);
+    EXPECT_EQ(result, 0);
+    uint32_t uint32Val = jsonGuard->GetUint32("uint32Key");
+    EXPECT_EQ(uint32Val, 4294967295U);
+    
+    // 测试SetUint64
+    result = jsonGuard->SetUint64("uint64Key", UINT64_MAX);
+    EXPECT_EQ(result, 0);
+    uint64_t uint64Val = jsonGuard->GetUint64("uint64Key");
+    EXPECT_EQ(uint64Val, UINT64_MAX);
+    
+    // 测试SetDouble
+    result = jsonGuard->SetDouble("doubleKey", -123.456789);
+    EXPECT_EQ(result, 0);
+    double doubleVal = jsonGuard->GetDouble("doubleKey");
+    EXPECT_DOUBLE_EQ(doubleVal, -123.456789);
+    
+    // 测试无效参数
+    result = jsonGuard->SetInt64(nullptr, 0);
+    EXPECT_NE(result, 0);
+    
+    result = jsonGuard->SetUint32(nullptr, 0);
+    EXPECT_NE(result, 0);
+    
+    result = jsonGuard->SetUint64(nullptr, 0);
+    EXPECT_NE(result, 0);
+    
+    result = jsonGuard->SetDouble(nullptr, 0.0);
+    EXPECT_NE(result, 0);
+}
+
+// 测试GetInt64、GetUint32、GetUint64、GetDouble接口（通过index）
+TEST_F(CppxJsonTest, TestGetNumericTypesByIndex)
+{
+    JsonGuard arrayGuard(IJson::JsonType::kArray);
+    ASSERT_NE(arrayGuard.get(), nullptr);
+    
+    // 添加各种数值类型
+    arrayGuard->AppendInt64(INT64_MAX);
+    arrayGuard->AppendUint32(UINT32_MAX);
+    arrayGuard->AppendUint64(UINT64_MAX);
+    arrayGuard->AppendDouble(2.718281828);
+    
+    // 测试GetInt64通过索引
+    int64_t int64Val = arrayGuard->GetInt64(static_cast<uint32_t>(0));
+    EXPECT_EQ(int64Val, INT64_MAX);
+    
+    int64_t int64Default = arrayGuard->GetInt64(static_cast<uint32_t>(10), -1);
+    EXPECT_EQ(int64Default, -1);
+    
+    // 测试GetUint32通过索引
+    uint32_t uint32Val = arrayGuard->GetUint32(static_cast<uint32_t>(1));
+    EXPECT_EQ(uint32Val, UINT32_MAX);
+    
+    uint32_t uint32Default = arrayGuard->GetUint32(static_cast<uint32_t>(10), 999);
+    EXPECT_EQ(uint32Default, 999);
+    
+    // 测试GetUint64通过索引
+    uint64_t uint64Val = arrayGuard->GetUint64(static_cast<uint32_t>(2));
+    EXPECT_EQ(uint64Val, UINT64_MAX);
+    
+    uint64_t uint64Default = arrayGuard->GetUint64(static_cast<uint32_t>(10), 888);
+    EXPECT_EQ(uint64Default, 888);
+    
+    // 测试GetDouble通过索引
+    double doubleVal = arrayGuard->GetDouble(static_cast<uint32_t>(3));
+    EXPECT_DOUBLE_EQ(doubleVal, 2.718281828);
+    
+    double doubleDefault = arrayGuard->GetDouble(static_cast<uint32_t>(10), 1.414);
+    EXPECT_DOUBLE_EQ(doubleDefault, 1.414);
+}
+
+// 测试AppendInt64、AppendUint32、AppendUint64、AppendDouble接口
+TEST_F(CppxJsonTest, TestAppendNumericTypes)
+{
+    JsonGuard arrayGuard(IJson::JsonType::kArray);
+    ASSERT_NE(arrayGuard.get(), nullptr);
+    
+    // 测试AppendInt64
+    int32_t result = arrayGuard->AppendInt64(INT64_MIN);
+    EXPECT_EQ(result, 0);
+    int64_t int64Val = arrayGuard->GetInt64(static_cast<uint32_t>(0));
+    EXPECT_EQ(int64Val, INT64_MIN);
+    
+    // 测试AppendUint32
+    result = arrayGuard->AppendUint32(1234567890U);
+    EXPECT_EQ(result, 0);
+    uint32_t uint32Val = arrayGuard->GetUint32(static_cast<uint32_t>(1));
+    EXPECT_EQ(uint32Val, 1234567890U);
+    
+    // 测试AppendUint64
+    result = arrayGuard->AppendUint64(UINT64_MAX);
+    EXPECT_EQ(result, 0);
+    uint64_t uint64Val = arrayGuard->GetUint64(static_cast<uint32_t>(2));
+    EXPECT_EQ(uint64Val, UINT64_MAX);
+    
+    // 测试AppendDouble
+    result = arrayGuard->AppendDouble(1.414213562);
+    EXPECT_EQ(result, 0);
+    double doubleVal = arrayGuard->GetDouble(static_cast<uint32_t>(3));
+    EXPECT_DOUBLE_EQ(doubleVal, 1.414213562);
+    
+    // 验证数组大小
+    uint32_t size = arrayGuard->GetSize();
+    EXPECT_EQ(size, 4);
+}
+
+// 测试GetObject拷贝版本（通过key）
+TEST_F(CppxJsonTest, TestGetObjectCopyByKey)
+{
+    JsonGuard jsonGuard;
+    ASSERT_NE(jsonGuard.get(), nullptr);
+    
+    // 先解析测试数据
+    int32_t result = jsonGuard->ParseFile("test_data.json");
+    ASSERT_EQ(result, 0);
+    
+    // 创建一个目标对象用于接收拷贝
+    JsonGuard targetGuard;
+    ASSERT_NE(targetGuard.get(), nullptr);
+    
+    // 测试GetObject拷贝版本
+    result = jsonGuard->GetObject("address", targetGuard.get());
+    EXPECT_EQ(result, 0);
+    
+    // 验证拷贝的对象内容
+    const char* city = targetGuard->GetString("city");
+    ASSERT_NE(city, nullptr);
+    EXPECT_STREQ(city, "北京");
+    
+    const char* zipCode = targetGuard->GetString("zipCode");
+    ASSERT_NE(zipCode, nullptr);
+    EXPECT_STREQ(zipCode, "100000");
+    
+    // 测试获取不存在的对象
+    JsonGuard emptyGuard;
+    result = jsonGuard->GetObject("nonexistent", emptyGuard.get());
+    EXPECT_NE(result, 0);
+    
+    // 测试无效参数
+    result = jsonGuard->GetObject(nullptr, targetGuard.get());
+    EXPECT_NE(result, 0);
+    
+    result = jsonGuard->GetObject("address", nullptr);
+    EXPECT_NE(result, 0);
+}
+
+// 测试GetArray拷贝版本（通过key）
+TEST_F(CppxJsonTest, TestGetArrayCopyByKey)
+{
+    JsonGuard jsonGuard;
+    ASSERT_NE(jsonGuard.get(), nullptr);
+    
+    // 先解析测试数据
+    int32_t result = jsonGuard->ParseFile("test_data.json");
+    ASSERT_EQ(result, 0);
+    
+    // 创建一个目标数组用于接收拷贝
+    JsonGuard targetGuard(IJson::JsonType::kArray);
+    ASSERT_NE(targetGuard.get(), nullptr);
+    
+    // 测试GetArray拷贝版本
+    result = jsonGuard->GetArray("hobbies", targetGuard.get());
+    EXPECT_EQ(result, 0);
+    
+    // 验证拷贝的数组内容
+    uint32_t size = targetGuard->GetSize();
+    EXPECT_EQ(size, 3);
+    
+    const char* hobby1 = targetGuard->GetString(static_cast<uint32_t>(0));
+    ASSERT_NE(hobby1, nullptr);
+    EXPECT_STREQ(hobby1, "读书");
+    
+    const char* hobby2 = targetGuard->GetString(static_cast<uint32_t>(1));
+    ASSERT_NE(hobby2, nullptr);
+    EXPECT_STREQ(hobby2, "游泳");
+    
+    // 测试获取不存在的数组
+    JsonGuard emptyGuard(IJson::JsonType::kArray);
+    result = jsonGuard->GetArray("nonexistent", emptyGuard.get());
+    EXPECT_NE(result, 0);
+    
+    // 测试无效参数
+    result = jsonGuard->GetArray(nullptr, targetGuard.get());
+    EXPECT_NE(result, 0);
+    
+    result = jsonGuard->GetArray("hobbies", nullptr);
+    EXPECT_NE(result, 0);
+}
+
+// 测试GetObject拷贝版本（通过index）
+TEST_F(CppxJsonTest, TestGetObjectCopyByIndex)
+{
+    JsonGuard arrayGuard(IJson::JsonType::kArray);
+    ASSERT_NE(arrayGuard.get(), nullptr);
+    
+    // 添加一个对象到数组
+    JsonGuard subObjGuard;
+    ASSERT_NE(subObjGuard.get(), nullptr);
+    subObjGuard->SetString("name", "测试对象");
+    subObjGuard->SetInt32("id", 100);
+    arrayGuard->AppendObject(subObjGuard.get());
+    
+    // 创建一个目标对象用于接收拷贝
+    JsonGuard targetGuard;
+    ASSERT_NE(targetGuard.get(), nullptr);
+    
+    // 测试GetObject拷贝版本（通过index）
+    int32_t result = arrayGuard->GetObject(static_cast<uint32_t>(0), targetGuard.get());
+    EXPECT_EQ(result, 0);
+    
+    // 验证拷贝的对象内容
+    const char* name = targetGuard->GetString("name");
+    ASSERT_NE(name, nullptr);
+    EXPECT_STREQ(name, "测试对象");
+    
+    int32_t id = targetGuard->GetInt32("id");
+    EXPECT_EQ(id, 100);
+    
+    // 测试越界访问
+    JsonGuard emptyGuard;
+    result = arrayGuard->GetObject(static_cast<uint32_t>(10), emptyGuard.get());
+    EXPECT_NE(result, 0);
+    
+    // 测试无效参数
+    result = arrayGuard->GetObject(static_cast<uint32_t>(0), nullptr);
+    EXPECT_NE(result, 0);
+}
+
+// 测试GetArray拷贝版本（通过index）
+TEST_F(CppxJsonTest, TestGetArrayCopyByIndex)
+{
+    JsonGuard arrayGuard(IJson::JsonType::kArray);
+    ASSERT_NE(arrayGuard.get(), nullptr);
+    
+    // 添加一个数组到数组
+    JsonGuard subArrayGuard(IJson::JsonType::kArray);
+    ASSERT_NE(subArrayGuard.get(), nullptr);
+    subArrayGuard->AppendString("元素1");
+    subArrayGuard->AppendString("元素2");
+    arrayGuard->AppendArray(subArrayGuard.get());
+    
+    // 创建一个目标数组用于接收拷贝
+    JsonGuard targetGuard(IJson::JsonType::kArray);
+    ASSERT_NE(targetGuard.get(), nullptr);
+    
+    // 测试GetArray拷贝版本（通过index）
+    int32_t result = arrayGuard->GetArray(static_cast<uint32_t>(0), targetGuard.get());
+    EXPECT_EQ(result, 0);
+    
+    // 验证拷贝的数组内容
+    uint32_t size = targetGuard->GetSize();
+    EXPECT_EQ(size, 2);
+    
+    const char* elem1 = targetGuard->GetString(static_cast<uint32_t>(0));
+    ASSERT_NE(elem1, nullptr);
+    EXPECT_STREQ(elem1, "元素1");
+    
+    const char* elem2 = targetGuard->GetString(static_cast<uint32_t>(1));
+    ASSERT_NE(elem2, nullptr);
+    EXPECT_STREQ(elem2, "元素2");
+    
+    // 测试越界访问
+    JsonGuard emptyGuard(IJson::JsonType::kArray);
+    result = arrayGuard->GetArray(static_cast<uint32_t>(10), emptyGuard.get());
+    EXPECT_NE(result, 0);
+    
+    // 测试无效参数
+    result = arrayGuard->GetArray(static_cast<uint32_t>(0), nullptr);
+    EXPECT_NE(result, 0);
+}
+
+// 测试SetObject零拷贝版本（返回IJson*）
+TEST_F(CppxJsonTest, TestSetObjectZeroCopy)
+{
+    JsonGuard jsonGuard;
+    ASSERT_NE(jsonGuard.get(), nullptr);
+    
+    // 测试SetObject零拷贝版本
+    IJson* subObj = jsonGuard->SetObject("subObject");
+    ASSERT_NE(subObj, nullptr);
+    
+    // 在返回的对象上设置值
+    int32_t result = subObj->SetString("name", "零拷贝对象");
+    EXPECT_EQ(result, 0);
+    result = subObj->SetInt32("value", 42);
+    EXPECT_EQ(result, 0);
+    
+    // 验证设置成功
+    const IJson* retrievedObj = jsonGuard->GetObject("subObject");
+    ASSERT_NE(retrievedObj, nullptr);
+    const char* name = retrievedObj->GetString("name");
+    ASSERT_NE(name, nullptr);
+    EXPECT_STREQ(name, "零拷贝对象");
+    
+    int32_t value = retrievedObj->GetInt32("value");
+    EXPECT_EQ(value, 42);
+    
+    // 测试无效参数
+    IJson* nullObj = jsonGuard->SetObject(nullptr);
+    EXPECT_EQ(nullObj, nullptr);
+}
+
+// 测试SetArray零拷贝版本（返回IJson*）
+TEST_F(CppxJsonTest, TestSetArrayZeroCopy)
+{
+    JsonGuard jsonGuard;
+    ASSERT_NE(jsonGuard.get(), nullptr);
+    
+    // 测试SetArray零拷贝版本
+    IJson* subArray = jsonGuard->SetArray("subArray");
+    ASSERT_NE(subArray, nullptr);
+    
+    // 在返回的数组上添加元素
+    int32_t result = subArray->AppendString("数组元素1");
+    EXPECT_EQ(result, 0);
+    result = subArray->AppendInt32(123);
+    EXPECT_EQ(result, 0);
+    
+    // 验证设置成功
+    const IJson* retrievedArray = jsonGuard->GetArray("subArray");
+    ASSERT_NE(retrievedArray, nullptr);
+    uint32_t size = retrievedArray->GetSize();
+    EXPECT_EQ(size, 2);
+    
+    const char* str = retrievedArray->GetString(static_cast<uint32_t>(0));
+    ASSERT_NE(str, nullptr);
+    EXPECT_STREQ(str, "数组元素1");
+    
+    int32_t intVal = retrievedArray->GetInt32(static_cast<uint32_t>(1));
+    EXPECT_EQ(intVal, 123);
+    
+    // 测试无效参数
+    IJson* nullArray = jsonGuard->SetArray(nullptr);
+    EXPECT_EQ(nullArray, nullptr);
+}
+
+// 测试AppendObject零拷贝版本（返回IJson*）
+TEST_F(CppxJsonTest, TestAppendObjectZeroCopy)
+{
+    JsonGuard arrayGuard(IJson::JsonType::kArray);
+    ASSERT_NE(arrayGuard.get(), nullptr);
+    
+    // 测试AppendObject零拷贝版本
+    IJson* subObj = arrayGuard->AppendObject();
+    ASSERT_NE(subObj, nullptr);
+    
+    // 在返回的对象上设置值
+    int32_t result = subObj->SetString("name", "追加的对象");
+    EXPECT_EQ(result, 0);
+    result = subObj->SetInt32("id", 200);
+    EXPECT_EQ(result, 0);
+    
+    // 验证追加成功
+    uint32_t size = arrayGuard->GetSize();
+    EXPECT_EQ(size, 1);
+    
+    const IJson* retrievedObj = arrayGuard->GetObject(static_cast<uint32_t>(0));
+    ASSERT_NE(retrievedObj, nullptr);
+    const char* name = retrievedObj->GetString("name");
+    ASSERT_NE(name, nullptr);
+    EXPECT_STREQ(name, "追加的对象");
+    
+    int32_t id = retrievedObj->GetInt32("id");
+    EXPECT_EQ(id, 200);
+}
+
+// 测试AppendArray零拷贝版本（返回IJson*）
+TEST_F(CppxJsonTest, TestAppendArrayZeroCopy)
+{
+    JsonGuard arrayGuard(IJson::JsonType::kArray);
+    ASSERT_NE(arrayGuard.get(), nullptr);
+    
+    // 测试AppendArray零拷贝版本
+    IJson* subArray = arrayGuard->AppendArray();
+    ASSERT_NE(subArray, nullptr);
+    
+    // 在返回的数组上添加元素
+    int32_t result = subArray->AppendString("子数组元素");
+    EXPECT_EQ(result, 0);
+    result = subArray->AppendBool(true);
+    EXPECT_EQ(result, 0);
+    
+    // 验证追加成功
+    uint32_t size = arrayGuard->GetSize();
+    EXPECT_EQ(size, 1);
+    
+    const IJson* retrievedArray = arrayGuard->GetArray(static_cast<uint32_t>(0));
+    ASSERT_NE(retrievedArray, nullptr);
+    uint32_t subSize = retrievedArray->GetSize();
+    EXPECT_EQ(subSize, 2);
+    
+    const char* str = retrievedArray->GetString(static_cast<uint32_t>(0));
+    ASSERT_NE(str, nullptr);
+    EXPECT_STREQ(str, "子数组元素");
+    
+    bool boolVal = retrievedArray->GetBool(static_cast<uint32_t>(1));
+    EXPECT_TRUE(boolVal);
+}
+
+// 测试Create方法的不同类型参数
+TEST_F(CppxJsonTest, TestCreateWithDifferentTypes)
+{
+    // 测试创建对象类型
+    IJson* objJson = IJson::Create(IJson::JsonType::kObject);
+    ASSERT_NE(objJson, nullptr);
+    EXPECT_EQ(objJson->GetType(), IJson::JsonType::kObject);
+    IJson::Destroy(objJson);
+    
+    // 测试创建数组类型
+    IJson* arrayJson = IJson::Create(IJson::JsonType::kArray);
+    ASSERT_NE(arrayJson, nullptr);
+    EXPECT_EQ(arrayJson->GetType(), IJson::JsonType::kArray);
+    IJson::Destroy(arrayJson);
 }
 

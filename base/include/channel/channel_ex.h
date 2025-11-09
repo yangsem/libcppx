@@ -67,7 +67,7 @@ public:
         {
             try
             {
-                t = std::move(*reinterpret_cast<T *>(pEntry->pData));
+                t = std::move(*reinterpret_cast<T *>(pEntry->data()));
                 DeleteEntry(pEntry);
                 return 0;
             }
