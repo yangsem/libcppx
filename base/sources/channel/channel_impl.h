@@ -2,6 +2,7 @@
 #define __CPPX_CHANNEL_IMPL_H__
 
 #include <channel/channel.h>
+#include <cstdint>
 
 namespace cppx
 {
@@ -10,34 +11,73 @@ namespace base
 namespace channel
 {
 
-template<ChannelType eChannelType>
-class CChannelImpl final : public IChannel<eChannelType>
+constexpr uint8_t kMagic = 0x7F; // 魔数
+
+struct Entry
 {
-    using ChannelImpl = IChannel<eChannelType>;
-public:
-    CChannelImpl() noexcept = default;
-    CChannelImpl(const CChannelImpl &) = delete;
-    CChannelImpl &operator=(const CChannelImpl &) = delete;
-    CChannelImpl(CChannelImpl &&) = delete;
-    CChannelImpl &operator=(CChannelImpl &&) = delete;
+    uint8_t uMagic;
+    uint8_t Reserved[3];
+    uint32_t uFlags;
 
-    ~CChannelImpl() noexcept;
-
-    int32_t Init(const ChannelConfig *pConfig) noexcept;
-    void Exit() noexcept;
-
-    Entry *NewEntry() noexcept;
-    Entry *NewEntry(uint32_t uElementSize) noexcept;
-    void PostEntry(Entry *pEntry) noexcept;
-    Entry *GetEntry() noexcept;
-    void DeleteEntry(Entry *pEntry) noexcept;
-    bool IsEmpty() const noexcept;
-    uint32_t GetSize() const noexcept;
-    int32_t GetStats(QueueStats &stStats) const noexcept;
-
-private:
-
+    uint8_t *Data() noexcept { return reinterpret_cast<uint8_t *>(this) + sizeof(Entry); }
 };
+
+struct ChannelStats
+{
+    uint64_t uCount{0};        // 操作次数
+    uint64_t uFailed{0};        // 失败次数
+    uint64_t uCount2{0};       // uCount成对操作次数
+    uint64_t uFailed2{0};    // 失败次数
+
+    inline void Reset() noexcept
+    {
+        uCount = 0;
+        uFailed = 0;
+        uCount2 = 0;
+        uFailed2 = 0;
+    }
+};
+
+inline uint64_t Up2PowerOf2(uint64_t uValue) noexcept
+{
+    if (uValue == 0)
+    {
+        return 0;
+    }
+    uValue--;
+    uValue |= (uValue >> 1);
+    uValue |= (uValue >> 2);
+    uValue |= (uValue >> 4);
+    uValue |= (uValue >> 8);
+    uValue |= (uValue >> 16);
+    uValue |= (uValue >> 32);
+    return uValue + 1;
+}
+
+inline uint64_t GetIndex(uint64_t uIndex, uint64_t uSize) noexcept
+{
+    return uIndex & (uSize - uint64_t(1));
+}
+
+template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kBounded>;
+template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kUnbounded>;
+template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kBounded>;
+template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kUnbounded>;
+
+template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kFixedSize, LengthType::kBounded>;
+template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kFixedSize, LengthType::kUnbounded>;
+template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kVariableSize, LengthType::kBounded>;
+template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kVariableSize, LengthType::kUnbounded>;
+
+template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kFixedSize, LengthType::kBounded>;
+template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kFixedSize, LengthType::kUnbounded>;
+template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kVariableSize, LengthType::kBounded>;
+template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kVariableSize, LengthType::kUnbounded>;
+
+template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kFixedSize, LengthType::kBounded>;
+template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kFixedSize, LengthType::kUnbounded>;
+template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kVariableSize, LengthType::kBounded>;
+template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kVariableSize, LengthType::kUnbounded>;
 
 }
 }

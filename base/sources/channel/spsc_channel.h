@@ -1,0 +1,63 @@
+#ifndef __CPPX_SPSC_CHANNEL_H__
+#define __CPPX_SPSC_CHANNEL_H__
+
+#include "channel_impl.h"
+#include "utilities/json.h"
+#include <cstdint>
+
+namespace cppx
+{
+namespace base
+{
+namespace channel
+{
+
+class CSPSCFixedBoundedChannel
+{
+public:
+    CSPSCFixedBoundedChannel() noexcept = default;
+    CSPSCFixedBoundedChannel(const CSPSCFixedBoundedChannel &) = delete;
+    CSPSCFixedBoundedChannel &operator=(const CSPSCFixedBoundedChannel &) = delete;
+    CSPSCFixedBoundedChannel(CSPSCFixedBoundedChannel &&) = delete;
+    CSPSCFixedBoundedChannel &operator=(CSPSCFixedBoundedChannel &&) = delete;
+
+    ~CSPSCFixedBoundedChannel() noexcept;
+
+    int32_t Init(uint64_t uElemSize, uint64_t uSize) noexcept;
+
+    void *New() noexcept;
+    void Post(void *pData) noexcept;
+
+    void *Get() noexcept;
+    void Delete(void *pData) noexcept;
+
+    bool IsEmpty() const noexcept;
+    uint32_t GetSize() const noexcept;
+
+    int32_t GetStats(IJson *pStats) const noexcept;
+
+private:
+    // producer
+    ALIGN_AS_CACHELINE \
+    uint8_t *m_pDatap{nullptr};
+    uint64_t m_uElemSizep{0};
+    uint64_t m_uSizep{0};
+    uint64_t m_uTail{0};
+    uint64_t m_uHeadRef{0};
+    ChannelStats m_Statsp;
+
+    // consumer
+    ALIGN_AS_CACHELINE \
+    uint8_t *m_pDatac{nullptr};
+    uint64_t m_uElemSizec{0};
+    uint64_t m_uSizec{0};
+    uint64_t m_uHead{0};
+    uint64_t m_uTailRef{0};
+    ChannelStats m_Statsc;
+};
+
+}
+}
+}
+
+#endif // __CPPX_SPSC_CHANNEL_H__

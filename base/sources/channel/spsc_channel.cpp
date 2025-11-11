@@ -1,0 +1,146 @@
+#include "spsc_channel.h"
+#include <utilities/common.h>
+#include <memory/allocator_ex.h>
+#include <utilities/error_code.h>
+#include <atomic>
+
+namespace cppx
+{
+namespace base
+{
+namespace channel
+{
+
+CSPSCFixedBoundedChannel::~CSPSCFixedBoundedChannel() noexcept
+{
+    if (m_pDatap != nullptr)
+    {
+        IAllocator::GetInstance()->Free(m_pDatap);
+        m_pDatap = nullptr;
+        m_pDatac = nullptr;
+    }
+}
+
+int32_t CSPSCFixedBoundedChannel::Init(uint64_t uElemSize, uint64_t uSize) noexcept
+{
+    m_uElemSizep = ALIGN8(uElemSize);
+    m_uElemSizec = m_uElemSizep;
+    m_uSizep = Up2PowerOf2(uSize);
+    m_uSizec = m_uSizep;
+    m_uTail = 0;
+    m_uHead = 0;
+    m_uTailRef = m_uTail;
+    m_uHeadRef = m_uHead;
+    m_Statsp.Reset();
+    m_Statsc.Reset();
+
+    auto pData = reinterpret_cast<uint8_t *>(IAllocator::GetInstance()->Malloc(m_uSizep * m_uElemSizep));
+    if (pData == nullptr)
+    {
+        SetLastError(ErrorCode::kOutOfMemory);
+        return ErrorCode::kOutOfMemory;
+    }
+    m_pDatap = pData;
+    m_pDatac = pData;
+
+    return ErrorCode::kSuccess;
+}
+
+void *CSPSCFixedBoundedChannel::New() noexcept
+{
+    if (likely(m_uTail - m_uHeadRef < m_uSizep))
+    {
+        m_Statsp.uCount++;
+        return &m_pDatap[GetIndex(m_uTail, m_uSizep) * m_uElemSizep];
+    }
+
+    m_uHeadRef = ACCESS_ONCE(m_uHead);
+    if (likely(m_uTail - m_uHeadRef < m_uSizep))
+    {
+        m_Statsp.uCount++;
+        return &m_pDatap[GetIndex(m_uTail, m_uSizep) * m_uElemSizep];
+    }
+
+    m_Statsp.uFailed++;
+    return nullptr;
+}
+
+void CSPSCFixedBoundedChannel::Post(void *pData) noexcept
+{
+    if (likely(pData != nullptr))
+    {
+        std::atomic_thread_fence(std::memory_order_release);
+        m_uTail = (m_uTail + 1) % m_uSizep;
+        m_Statsp.uCount++;
+    }
+    m_Statsp.uFailed2++;
+}
+
+void *CSPSCFixedBoundedChannel::Get() noexcept
+{
+    if (likely(m_uHead < m_uTailRef))
+    {
+        m_Statsc.uCount++;
+        return &m_pDatac[GetIndex(m_uHead, m_uSizec) * m_uElemSizec];
+    }
+
+    m_uTailRef = ACCESS_ONCE(m_uTail);
+    if (likely(m_uHead < m_uTailRef))
+    {
+        m_Statsc.uCount++;
+        return &m_pDatac[GetIndex(m_uHead, m_uSizec) * m_uElemSizec];
+    }
+
+    m_Statsc.uFailed2++;
+    return nullptr;
+}
+
+void CSPSCFixedBoundedChannel::Delete(void *pData) noexcept
+{
+    if (likely(pData != nullptr))
+    {
+        std::atomic_thread_fence(std::memory_order_acquire);
+        m_uHead = (m_uHead + 1) % m_uSizec;
+        m_Statsc.uCount2++;
+    }
+    m_Statsc.uFailed2++;
+}
+
+bool CSPSCFixedBoundedChannel::IsEmpty() const noexcept
+{
+    return ACCESS_ONCE(m_uHead) == ACCESS_ONCE(m_uTail);
+}
+
+uint32_t CSPSCFixedBoundedChannel::GetSize() const noexcept
+{
+    return ACCESS_ONCE(m_uTail) - ACCESS_ONCE(m_uHead);
+}
+
+int32_t CSPSCFixedBoundedChannel::GetStats(IJson *pStats) const noexcept
+{
+    if (likely(pStats != nullptr))
+    {
+        auto pStatsp = pStats->SetObject("producer");
+        if (likely(pStatsp != nullptr))
+        {
+            pStatsp->SetUint32("count", m_Statsp.uCount);
+            pStatsp->SetUint32("failed", m_Statsp.uFailed);
+            pStatsp->SetUint32("count2", m_Statsp.uCount2);
+            pStatsp->SetUint32("failed2", m_Statsp.uFailed2);
+        }
+        auto pStatsc = pStats->SetObject("consumer");
+        if (likely(pStatsc != nullptr)) {
+            pStatsc->SetUint32("count", m_Statsc.uCount);
+            pStatsc->SetUint32("failed", m_Statsc.uFailed);
+            pStatsc->SetUint32("count2", m_Statsc.uCount2);
+            pStatsc->SetUint32("failed2", m_Statsc.uFailed2);
+        }
+        return ErrorCode::kSuccess;
+    }
+
+    return ErrorCode::kInvalidParam;
+}
+
+}
+}
+}

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdint>
 #include <utilities/common.h>
+#include <utilities/json.h>
 
 namespace cppx
 {
@@ -37,16 +38,6 @@ struct ChannelConfig
     uint32_t uElementSize;
     uint32_t uMaxElementCount;
     uint32_t uTotalMemorySizeMB;
-};
-
-struct QueueStats
-{
-    uint32_t uPushCount;        // 入队次数
-    uint32_t uPushSuccessCount; // 入队成功次数
-    uint32_t uPushFailCount;    // 入队失败次数
-    uint32_t uPopCount;         // 出队次数
-    uint32_t uPopSuccessCount;  // 出队成功次数
-    uint32_t uPopFailCount;     // 出队失败次数
 };
 
 template<ChannelType eChannelType, ElementType eElementType, LengthType eLengthType>
@@ -89,10 +80,9 @@ public:
     /**
      * @brief 发布一个元素
      * @param pData 元素指针
-     * @param bValid 元素是否有效
      * @note 多线程安全
      */
-    void Post(void *pData, bool bValid = true) noexcept;
+    void Post(void *pData) noexcept;
 
     /**
      * @brief 获取一个元素
@@ -128,7 +118,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    int32_t GetStats(QueueStats *pStats) const noexcept;
+    int32_t GetStats(IJson *pStats) const noexcept;
 };
 
 extern template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kBounded>;

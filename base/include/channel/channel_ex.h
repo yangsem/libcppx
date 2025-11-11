@@ -2,6 +2,7 @@
 #define __CPPX_CHANNEL_EX_H__
 
 #include <channel/channel.h>
+#include <cstring>
 #include <utility>
 
 namespace cppx
@@ -49,7 +50,8 @@ public:
             }
             catch (const std::exception &e)
             {
-                this->Post(pData, false);
+                memset(pData, 0xFF, sizeof(T));
+                this->Post(pData);
             }
         }
         return -1;
@@ -63,6 +65,7 @@ public:
      */
     int32_t Pop(T &t) noexcept
     {
+        // TODO: 弹出元素时，需要考虑元素是否有效，如果无效，则需要重新获取
         auto pData = this->Get();
         if (likely(pData != nullptr))
         {
