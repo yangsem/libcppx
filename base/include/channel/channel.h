@@ -121,26 +121,6 @@ public:
     int32_t GetStats(IJson *pStats) const noexcept;
 };
 
-extern template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kBounded>;
-extern template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kUnbounded>;
-extern template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kBounded>;
-extern template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kUnbounded>;
-
-extern template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kFixedSize, LengthType::kBounded>;
-extern template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kFixedSize, LengthType::kUnbounded>;
-extern template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kVariableSize, LengthType::kBounded>;
-extern template class EXPORT IChannel<ChannelType::kSPMC, ElementType::kVariableSize, LengthType::kUnbounded>;
-
-extern template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kFixedSize, LengthType::kBounded>;
-extern template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kFixedSize, LengthType::kUnbounded>;
-extern template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kVariableSize, LengthType::kBounded>;
-extern template class EXPORT IChannel<ChannelType::kMPSC, ElementType::kVariableSize, LengthType::kUnbounded>;
-
-extern template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kFixedSize, LengthType::kBounded>;
-extern template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kFixedSize, LengthType::kUnbounded>;
-extern template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kVariableSize, LengthType::kBounded>;
-extern template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kVariableSize, LengthType::kUnbounded>;
-
 using SPSCFixedBoundedChannel = IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kBounded>;
 using SPSCFixedUnboundedChannel = IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kUnbounded>;
 using SPSCVariableBoundedChannel = IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kBounded>;

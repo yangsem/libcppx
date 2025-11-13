@@ -50,7 +50,7 @@ public:
             }
             catch (const std::exception &e)
             {
-                memset(pData, 0xFF, sizeof(T));
+                reinterpret_cast<T *>(pData)->SetInvalid();
                 this->Post(pData);
             }
         }
@@ -65,7 +65,6 @@ public:
      */
     int32_t Pop(T &t) noexcept
     {
-        // TODO: 弹出元素时，需要考虑元素是否有效，如果无效，则需要重新获取
         auto pData = this->Get();
         if (likely(pData != nullptr))
         {

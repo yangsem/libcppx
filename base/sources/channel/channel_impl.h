@@ -11,26 +11,47 @@ namespace base
 namespace channel
 {
 
-constexpr uint8_t kMagic = 0x7F; // 魔数
+constexpr uint8_t kMagic = 0x7F7F; // 魔数
+
+enum EntryFlag : uint16_t
+{
+    kPlacehold = 1 << 0,
+};
 
 struct Entry
 {
-    uint8_t uMagic;
-    uint8_t Reserved[3];
-    uint32_t uFlags;
+    uint16_t uMagic;  // 魔数
+    uint16_t uFlags;  // 标志位
+    uint32_t uLength; // 用户数据长度
 
-    uint8_t *Data() noexcept { return reinterpret_cast<uint8_t *>(this) + sizeof(Entry); }
+    void *GetData()
+    {
+        return reinterpret_cast<uint8_t *>(this) + sizeof(Entry);
+    }
+
+    uint32_t GetDataLength() const { return uLength - sizeof(Entry); }
+
+    uint32_t GetTotalLength() const { return uLength; }
+
+    static inline uint32_t CalSize(uint32_t uSize)
+    {
+        return sizeof(Entry) + ALIGN8(uSize);
+    }
+
+    static inline Entry *GetEntry(void *pData)
+    {
+        return reinterpret_cast<Entry *>(reinterpret_cast<uint8_t *>(pData) - sizeof(Entry));
+    }
 };
 
 struct ChannelStats
 {
-    uint64_t uCount{0};        // 操作次数
-    uint64_t uFailed{0};        // 失败次数
-    uint64_t uCount2{0};       // uCount成对操作次数
-    uint64_t uFailed2{0};    // 失败次数
+    uint64_t uCount{0};   // 操作次数
+    uint64_t uFailed{0};  // 失败次数
+    uint64_t uCount2{0};  // uCount成对操作次数
+    uint64_t uFailed2{0}; // 失败次数
 
-    inline void Reset() noexcept
-    {
+    void Reset() noexcept {
         uCount = 0;
         uFailed = 0;
         uCount2 = 0;
@@ -59,7 +80,6 @@ inline uint64_t GetIndex(uint64_t uIndex, uint64_t uSize) noexcept
     return uIndex & (uSize - uint64_t(1));
 }
 
-template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kBounded>;
 template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kUnbounded>;
 template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kBounded>;
 template class EXPORT IChannel<ChannelType::kSPSC, ElementType::kVariableSize, LengthType::kUnbounded>;

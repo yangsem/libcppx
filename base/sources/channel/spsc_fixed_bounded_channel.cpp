@@ -1,5 +1,4 @@
-#include "spsc_channel.h"
-#include <utilities/common.h>
+#include "spsc_fixed_bounded_channel.h"
 #include <memory/allocator_ex.h>
 #include <utilities/error_code.h>
 #include <atomic>
@@ -65,6 +64,11 @@ void *CSPSCFixedBoundedChannel::New() noexcept
     return nullptr;
 }
 
+void *CSPSCFixedBoundedChannel::New(uint32_t uSize) noexcept
+{
+    return nullptr;
+}
+
 void CSPSCFixedBoundedChannel::Post(void *pData) noexcept
 {
     if (likely(pData != nullptr))
@@ -123,17 +127,18 @@ int32_t CSPSCFixedBoundedChannel::GetStats(IJson *pStats) const noexcept
         auto pStatsp = pStats->SetObject("producer");
         if (likely(pStatsp != nullptr))
         {
-            pStatsp->SetUint32("count", m_Statsp.uCount);
-            pStatsp->SetUint32("failed", m_Statsp.uFailed);
-            pStatsp->SetUint32("count2", m_Statsp.uCount2);
-            pStatsp->SetUint32("failed2", m_Statsp.uFailed2);
+            pStatsp->SetUint32("New", m_Statsp.uCount);
+            pStatsp->SetUint32("NewFailed", m_Statsp.uFailed);
+            pStatsp->SetUint32("Post", m_Statsp.uCount2);
+            pStatsp->SetUint32("PostFailed", m_Statsp.uFailed2);
         }
         auto pStatsc = pStats->SetObject("consumer");
-        if (likely(pStatsc != nullptr)) {
-            pStatsc->SetUint32("count", m_Statsc.uCount);
-            pStatsc->SetUint32("failed", m_Statsc.uFailed);
-            pStatsc->SetUint32("count2", m_Statsc.uCount2);
-            pStatsc->SetUint32("failed2", m_Statsc.uFailed2);
+        if (likely(pStatsc != nullptr))
+        {
+            pStatsc->SetUint32("Get", m_Statsc.uCount);
+            pStatsc->SetUint32("GetFailed", m_Statsc.uFailed);
+            pStatsc->SetUint32("Delete", m_Statsc.uCount2);
+            pStatsc->SetUint32("DeleteFailed", m_Statsc.uFailed2);
         }
         return ErrorCode::kSuccess;
     }
@@ -141,6 +146,76 @@ int32_t CSPSCFixedBoundedChannel::GetStats(IJson *pStats) const noexcept
     return ErrorCode::kInvalidParam;
 }
 
+template<>
+SPSCFixedBoundedChannel *SPSCFixedBoundedChannel::Create(const ChannelConfig *pConfig) noexcept
+{
+    auto pChannel = IAllocatorEx::GetInstance()->New<CSPSCFixedBoundedChannel>();
+    if (likely(pChannel != nullptr))
+    {
+        auto iErrorNo = pChannel->Init(pConfig->uElementSize, pConfig->uMaxElementCount);
+        if (iErrorNo != ErrorCode::kSuccess)
+        {
+            IAllocatorEx::GetInstance()->Delete(pChannel);
+            return nullptr;
+        }
+        return reinterpret_cast<SPSCFixedBoundedChannel *>(pChannel);
+    }
+    return nullptr;
+}
+
+template<>
+void SPSCFixedBoundedChannel::Destroy(IChannel *pChannel) noexcept
+{
+    IAllocatorEx::GetInstance()->Delete(reinterpret_cast<CSPSCFixedBoundedChannel *>(pChannel));
+}
+
+template<>
+void *SPSCFixedBoundedChannel::New() noexcept
+{
+    return reinterpret_cast<CSPSCFixedBoundedChannel *>(this)->New();
+}
+
+template<>
+void *SPSCFixedBoundedChannel::New(uint32_t uSize) noexcept
+{
+    return reinterpret_cast<CSPSCFixedBoundedChannel *>(this)->New(uSize);
+}
+
+template<>
+void SPSCFixedBoundedChannel::Post(void *pData) noexcept
+{
+    reinterpret_cast<CSPSCFixedBoundedChannel *>(this)->Post(pData);
+}
+
+template<>
+void *SPSCFixedBoundedChannel::Get() noexcept
+{
+    return reinterpret_cast<CSPSCFixedBoundedChannel *>(this)->Get();
+}
+
+template<>
+void SPSCFixedBoundedChannel::Delete(void *pData) noexcept
+{
+    reinterpret_cast<CSPSCFixedBoundedChannel *>(this)->Delete(pData);
+}
+
+template<>
+bool SPSCFixedBoundedChannel::IsEmpty() const noexcept
+{
+    return reinterpret_cast<const CSPSCFixedBoundedChannel *>(this)->IsEmpty();
+}
+
+template<>
+uint32_t SPSCFixedBoundedChannel::GetSize() const noexcept
+{
+    return reinterpret_cast<const CSPSCFixedBoundedChannel *>(this)->GetSize();
+}
+
+template<>
+int32_t SPSCFixedBoundedChannel::GetStats(IJson *pStats) const noexcept
+{
+    return reinterpret_cast<const CSPSCFixedBoundedChannel *>(this)->GetStats(pStats);
+}
 }
 }
 }
