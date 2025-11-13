@@ -11,7 +11,7 @@ namespace base
 namespace channel
 {
 
-constexpr uint8_t kMagic = 0x7F7F; // 魔数
+constexpr uint16_t kMagic = 0x7F7F; // 魔数
 
 enum EntryFlag : uint16_t
 {

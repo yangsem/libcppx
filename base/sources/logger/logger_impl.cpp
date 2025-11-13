@@ -99,7 +99,7 @@ int32_t CLoggerImpl::Init(IJson *pConfig) noexcept
     m_uLogFileMaxSizeMB = pConfig->GetUint64(config::kLogFileMaxSizeMB, default_value::kLogFileMaxSizeMB);
     m_uLogTotalSizeMB = pConfig->GetUint64(config::kLogTotalSizeMB, default_value::kLogTotalSizeMB);
     m_uLogFormatBufferSize = pConfig->GetUint32(config::kLogFormatBufferSize, default_value::kLogFormatBufferSize);
-    m_uLogChannelMaxCount = pConfig->GetUint32(config::kLogChannelMaxCount, default_value::kLogChannelMaxCount);
+    m_uLogChannelMaxMemMB = pConfig->GetUint32(config::kLogChannelMaxMemMB, default_value::kLogChannelMaxMemMB);
     m_pAllocator = IAllocator::GetInstance();
 
     try
@@ -119,10 +119,7 @@ int32_t CLoggerImpl::Init(IJson *pConfig) noexcept
     if (m_bAsync)
     {
         channel::ChannelConfig stConfig;
-        stConfig.eChannelType = channel::ChannelType::kMPSC;
-        stConfig.eElementType = channel::ElementType::kVariableSize;
-        stConfig.eLengthType = channel::LengthType::kBounded;
-        stConfig.uMaxElementCount = m_uLogChannelMaxCount;
+        stConfig.uTotalMemorySizeMB = m_uLogChannelMaxMemMB;
         m_pChannel = LogChannel::Create(&stConfig);
         if (m_pChannel == nullptr)
         {
@@ -266,13 +263,12 @@ int32_t CLoggerImpl::Log(int32_t iErrorNo, LogLevel eLevel, const char *pModule,
     }
     if (likely(m_bAsync))
     {
-        auto pEntry = m_pChannel->NewEntry(sizeof(LogItem));
-        if (unlikely(pEntry == nullptr))
+        auto pLogItem = reinterpret_cast<LogItem *>(m_pChannel->New(sizeof(LogItem)));
+        if (unlikely(pLogItem == nullptr))
         {
             SetLastError(ErrorCode::kOutOfMemory);
             return ErrorCode::kOutOfMemory;
         }
-        auto pLogItem = reinterpret_cast<LogItem *>(pEntry->data());
         pLogItem->header.eType = LogItemType::kLog;
         pLogItem->iErrorNo = iErrorNo;
         pLogItem->eLevel = eLevel;
@@ -284,7 +280,7 @@ int32_t CLoggerImpl::Log(int32_t iErrorNo, LogLevel eLevel, const char *pModule,
         pLogItem->pFunction = pFunction;
         pLogItem->pFormat = pFormat;
         pLogItem->CopyParams(m_pAllocator, ppParams, uParamCount);
-        m_pChannel->PostEntry(pEntry);
+        m_pChannel->Post(pLogItem);
         if (m_pChannel->GetSize() == 1)
         {
             m_condition.notify_one();
@@ -354,18 +350,17 @@ int32_t CLoggerImpl::LogFormat(int32_t iErrorNo, LogLevel eLevel, const char *pF
 
     if (likely(m_bAsync))
     {
-        auto pEntry = m_pChannel->NewEntry(sizeof(LogForamtItem));
-        if (unlikely(pEntry == nullptr))
+        auto pLogForamtItem = reinterpret_cast<LogForamtItem *>(m_pChannel->New(sizeof(LogForamtItem)));
+        if (unlikely(pLogForamtItem == nullptr))
         {
             m_pAllocator->Free(pLogBuffer);
             SetLastError(ErrorCode::kOutOfMemory);
             return ErrorCode::kOutOfMemory;
         }
-        auto pLogForamtItem = reinterpret_cast<LogForamtItem *>(pEntry->data());
         pLogForamtItem->header.eType = LogItemType::kLogFormat;
         pLogForamtItem->uWriteLen = uWriteLen;
         pLogForamtItem->pLogBuffer = pLogBuffer;
-        m_pChannel->PostEntry(pEntry);
+        m_pChannel->Post(pLogForamtItem);
         if (m_pChannel->GetSize() == 1)
         {
             m_condition.notify_one();
@@ -404,13 +399,12 @@ void CLoggerImpl::Run()
                              [this] () { return m_pChannel->GetSize() > 0; });
     }
 
-    auto pEntry = m_pChannel->GetEntry();
-    if (unlikely(pEntry != nullptr))
+    auto pHeader = reinterpret_cast<LogItemHeader *>(m_pChannel->Get());
+    if (unlikely(pHeader != nullptr))
     {
-        auto pHeader = reinterpret_cast<LogItemHeader *>(pEntry->data());
         if (pHeader->eType == LogItemType::kLog)
         {
-            auto pLogItem = reinterpret_cast<LogItem *>(pEntry->data());
+            auto pLogItem = reinterpret_cast<LogItem *>(pHeader);
             WriteLog(*pLogItem);
             for (uint32_t i = 0; i < pLogItem->uParamCount; ++i)
             {
@@ -420,11 +414,11 @@ void CLoggerImpl::Run()
         }
         else if (pHeader->eType == LogItemType::kLogFormat)
         {
-            auto pLogForamtItem = reinterpret_cast<LogForamtItem *>(pEntry->data());
+            auto pLogForamtItem = reinterpret_cast<LogForamtItem *>(pHeader);
             WriteLog(pLogForamtItem->pLogBuffer, pLogForamtItem->uWriteLen);
             m_pAllocator->Free(pLogForamtItem->pLogBuffer);
         }
-        m_pChannel->DeleteEntry(pEntry);
+        m_pChannel->Delete(pHeader);
     }
 
     CheckFileSwitch();

@@ -1,4 +1,5 @@
 #include "spsc_fixed_bounded_channel.h"
+#include "utilities/common.h"
 #include <memory/allocator_ex.h>
 #include <utilities/error_code.h>
 #include <atomic>
@@ -66,6 +67,7 @@ void *CSPSCFixedBoundedChannel::New() noexcept
 
 void *CSPSCFixedBoundedChannel::New(uint32_t uSize) noexcept
 {
+    UNSED(uSize);
     return nullptr;
 }
 

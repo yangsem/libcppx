@@ -136,7 +136,7 @@ constexpr const char *kLogSuffix = "log_suffix";    // 日志文件后缀名, �
 constexpr const char *kLogFileMaxSizeMB = "log_file_max_size_mb"; // 日志文件最大大小(MB), 类型: uint64_t
 constexpr const char *kLogTotalSizeMB = "log_total_size_mb"; // 日志文件总大小(MB), 类型: uint64_t
 constexpr const char *kLogFormatBufferSize = "log_format_buffer_size"; // 日志格式化缓冲区大小, 类型: uint32_t
-constexpr const char *kLogChannelMaxCount = "log_channel_max_count"; // 日志通道最大元素数量, 类型: uint32_t
+constexpr const char *kLogChannelMaxMemMB = "log_channel_max_mem_mb"; // 日志通道最大内存大小(MB), 类型: uint32_t
 }
 
 namespace default_value
@@ -151,7 +151,7 @@ constexpr const char *kLogSuffix = ".log"; // 日志文件后缀名, 默认: .lo
 constexpr const uint64_t kLogFileMaxSizeMB = 16; // 日志文件最大大小(MB), 默认: 16MB
 constexpr const uint64_t kLogTotalSizeMB = 4 * 1024; // 日志文件总大小(MB), 默认: 4GB
 constexpr const uint32_t kLogFormatBufferSize = 4096; // 日志格式化缓冲区大小, 默认: 4096
-constexpr const uint32_t kLogChannelMaxCount = 8192; // 日志通道最大元素数量, 默认: 8192
+constexpr const uint32_t kLogChannelMaxMemMB = 128; // 日志通道最大内存大小(MB), 默认: 128MB
 }
 
 }
