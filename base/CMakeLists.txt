@@ -15,6 +15,33 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
+# ==================== 代码覆盖率配置 ====================
+# 启用代码覆盖率选项（通过 -DENABLE_COVERAGE=ON 启用）
+option(ENABLE_COVERAGE "Enable code coverage instrumentation" OFF)
+
+if(ENABLE_COVERAGE)
+    message(STATUS "Code coverage enabled")
+    # 覆盖率需要Debug构建类型以获得更好的结果
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+        message(WARNING "Coverage is typically used with Debug build type. Current build type: ${CMAKE_BUILD_TYPE}")
+    endif()
+    
+    # 为GCC和Clang设置覆盖率编译选项
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # GCC使用 --coverage (等同于 -fprofile-arcs -ftest-coverage)
+        add_compile_options(--coverage)
+        add_link_options(--coverage)
+        message(STATUS "Using GCC coverage flags: --coverage")
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        # Clang使用 --coverage (等同于 -fprofile-instr-generate -fcoverage-mapping)
+        add_compile_options(--coverage)
+        add_link_options(--coverage)
+        message(STATUS "Using Clang coverage flags: --coverage")
+    else()
+        message(WARNING "Coverage may not be supported for compiler: ${CMAKE_CXX_COMPILER_ID}")
+    endif()
+endif()
+
 # ==================== 输出目录配置 ====================
 # 编译后的动态库放置到base/../lib中
 set(LIB_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/../lib)

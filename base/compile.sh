@@ -10,4 +10,4 @@ if [ "$1" == "clean" ] && [ -d "build" ]; then
     exit 0
 fi
 
-cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON && cmake --build build
