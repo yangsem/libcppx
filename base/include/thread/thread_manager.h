@@ -39,7 +39,7 @@ public:
     using ThreadLocalForEachFunc = bool (*) (void *pThreadLocal, void *pUserParam);
 
 protected:
-    virtual ~IThreadManager() noexcept = default;
+    virtual ~IThreadManager() = default;
 
 public:
     /**
@@ -47,21 +47,21 @@ public:
      * @return 成功返回线程管理器实例指针，失败返回 nullptr
      * @note 多线程安全
      */
-    static IThreadManager *Create() noexcept;
+    static IThreadManager *Create();
 
     /**
      * @brief 销毁一个线程管理器实例
      * @param pThreadManager 线程管理器实例指针
      * @note 多线程安全
      */
-    static void Destroy(IThreadManager *pThreadManager) noexcept;
+    static void Destroy(IThreadManager *pThreadManager);
     
     /**
      * @brief 获取线程管理器实例
      * @return 线程管理器实例指针
      * @note 多线程安全
      */
-    static IThreadManager *GetInstance() noexcept;
+    static IThreadManager *GetInstance();
 
     /**
      * @brief 注册线程事件函数
@@ -69,7 +69,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    virtual int32_t RegisterThreadEventFunc(ThreadEventFunc pThreadEventFunc, void *pUserParam) noexcept = 0;
+    virtual int32_t RegisterThreadEventFunc(ThreadEventFunc pThreadEventFunc, void *pUserParam) = 0;
 
     /**
      * @brief 创建一个线程
@@ -77,7 +77,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程不安全
      */
-    virtual IThread *CreateThread() noexcept = 0;
+    virtual IThread *CreateThread() = 0;
 
     /**
      * @brief 销毁一个线程
@@ -85,7 +85,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程不安全
      */
-    virtual void DestroyThread(IThread *pThread) noexcept = 0;
+    virtual void DestroyThread(IThread *pThread) = 0;
 
     /**
      * @brief 创建一个线程并启动
@@ -95,7 +95,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程不安全
      */
-    virtual int32_t CreateThread(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadParam) noexcept = 0;
+    virtual int32_t CreateThread(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadParam) = 0;
 
     /**
      * @brief 停止并销毁一个线程
@@ -103,21 +103,21 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程不安全
      */
-    virtual int32_t DestroyThread(const char *pThreadName) noexcept = 0;
+    virtual int32_t DestroyThread(const char *pThreadName) = 0;
 
     /**
      * @brief 创建一个线程本地数据ID
      * @return 成功返回线程本地数据ID，失败返回-1
      * @note 多线程安全
      */
-    virtual int32_t NewThreadLocalId() noexcept = 0;
+    virtual int32_t NewThreadLocalId() = 0;
 
     /**
      * @brief 释放一个线程本地数据ID
      * @param iThreadLocalId 线程本地数据ID
      * @note 多线程安全
      */
-    virtual void FreeThreadLocalId(int32_t iThreadLocalId) noexcept = 0;
+    virtual void FreeThreadLocalId(int32_t iThreadLocalId) = 0;
 
     /**
      * @brief 分配或者获取线程本地内存
@@ -126,7 +126,7 @@ public:
      * @return 成功返回线程本地数据指针，失败返回 nullptr
      * @note 多线程安全，首次获取会分配内存，后续获取会返回已分配的内存，如果是管理器创建的线程退出时会自动释放该内存
      */
-    virtual void* GetThreadLocal(int32_t iThreadLocalId, uint64_t uThreadLocalSize) noexcept = 0;
+    virtual void* GetThreadLocal(int32_t iThreadLocalId, uint64_t uThreadLocalSize) = 0;
 
     /**
      * @brief 遍历所有线程uThreadLocalId相同的线程本地数据，即遍历所有数据副本
@@ -136,7 +136,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    virtual int32_t ForEachAllThreadLocal(int32_t iThreadLocalId, ThreadLocalForEachFunc pThreadLocalForEachFunc, void *pUserParam) noexcept = 0;
+    virtual int32_t ForEachAllThreadLocal(int32_t iThreadLocalId, ThreadLocalForEachFunc pThreadLocalForEachFunc, void *pUserParam) = 0;
 
     /**
      * @brief 获取线程管理器统计信息
@@ -144,7 +144,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    virtual int32_t GetStats(IJson *pJson) const noexcept = 0;
+    virtual int32_t GetStats(IJson *pJson) const = 0;
 };
 
 }

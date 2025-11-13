@@ -27,7 +27,7 @@ public:
 protected:
     LogLevel m_eLogLevel; // 日志级别
 
-    virtual ~ILogger() noexcept = default;
+    virtual ~ILogger() = default;
 
 public:
     /**
@@ -36,28 +36,28 @@ public:
      * @return 成功返回ILogger对象指针，失败返回nullptr
      * @note 多线程安全
      */
-    static ILogger *Create(IJson *pConfig) noexcept;
+    static ILogger *Create(IJson *pConfig);
 
     /**
      * @brief 销毁一个ILogger对象
      * @param pLog ILogger对象指针
      * @note 多线程安全
      */
-    static void Destroy(ILogger *pLog) noexcept;
+    static void Destroy(ILogger *pLog);
 
     /**
      * @brief 获取日志级别
      * @return 日志级别
      * @note 多线程安全
      */
-    LogLevel GetLogLevel() const noexcept { return m_eLogLevel; }
+    LogLevel GetLogLevel() const { return m_eLogLevel; }
 
     /**
      * @brief 设置日志级别
      * @param eLevel 日志级别
      * @note 多线程安全
      */
-    void SetLogLevel(LogLevel eLevel) noexcept { m_eLogLevel = eLevel; }
+    void SetLogLevel(LogLevel eLevel) { m_eLogLevel = eLevel; }
 
     /**
      * @brief 初始化ILogger对象
@@ -65,26 +65,26 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程不安全
      */
-    virtual int32_t Init(IJson *pConfig) noexcept = 0;
+    virtual int32_t Init(IJson *pConfig) = 0;
 
     /**
      * @brief 清理资源并退出ILogger对象
      * @note 多线程不安全
      */
-    virtual void Exit() noexcept = 0;
+    virtual void Exit() = 0;
 
     /**
      * @brief 启动ILogger对象的线程
      * @return 成功返回0，失败返回错误码
      * @note 多线程不安全
      */
-    virtual int32_t Start() noexcept = 0;
+    virtual int32_t Start() = 0;
 
     /**
      * @brief 停止ILogger对象的线程
      * @note 多线程不安全
      */
-    virtual void Stop() noexcept = 0;
+    virtual void Stop() = 0;
 
     /**
      * @brief 记录日志
@@ -101,7 +101,7 @@ public:
      */
     virtual int32_t Log(int32_t iErrorNo, LogLevel eLevel, const char *pModule,
                         const char *pFileLine, const char *pFunction,
-                        const char *pFormat, const char **ppParams, uint32_t uParamCount) noexcept = 0;
+                        const char *pFormat, const char **ppParams, uint32_t uParamCount) = 0;
 
     /**
      * @brief 记录日志
@@ -112,7 +112,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    virtual int32_t LogFormat(int32_t iErrorNo, LogLevel eLevel, const char *pFormat, ...) noexcept = 0;
+    virtual int32_t LogFormat(int32_t iErrorNo, LogLevel eLevel, const char *pFormat, ...) = 0;
 
     /**
      * @brief 获取统计信息
@@ -121,7 +121,7 @@ public:
      * @return 统计信息
      * @note 多线程安全
      */
-    virtual int32_t GetStats(IJson *pJsonStats) const noexcept = 0;
+    virtual int32_t GetStats(IJson *pJsonStats) const = 0;
 };
 
 namespace config

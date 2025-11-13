@@ -12,7 +12,7 @@ namespace base
 namespace channel
 {
 
-CSPSCVariableBoundedChannel::~CSPSCVariableBoundedChannel() noexcept
+CSPSCVariableBoundedChannel::~CSPSCVariableBoundedChannel()
 {
     if (m_pDatap != nullptr)
     {
@@ -22,7 +22,7 @@ CSPSCVariableBoundedChannel::~CSPSCVariableBoundedChannel() noexcept
     }
 }
 
-int32_t CSPSCVariableBoundedChannel::Init(uint64_t uMaxMemorySizeKB) noexcept
+int32_t CSPSCVariableBoundedChannel::Init(uint64_t uMaxMemorySizeKB)
 {
     m_uSizep = Up2PowerOf2(uMaxMemorySizeKB * 1024);
     m_uSizec = m_uSizep;
@@ -44,12 +44,12 @@ int32_t CSPSCVariableBoundedChannel::Init(uint64_t uMaxMemorySizeKB) noexcept
     return ErrorCode::kSuccess;
 }
 
-Entry *CSPSCVariableBoundedChannel::New() noexcept
+Entry *CSPSCVariableBoundedChannel::New()
 {
     return nullptr;
 }
 
-Entry *CSPSCVariableBoundedChannel::New(uint32_t uSize) noexcept
+Entry *CSPSCVariableBoundedChannel::New(uint32_t uSize)
 {
     auto uEntrySize = Entry::CalSize(uSize);
     auto pData = NewEntry(uEntrySize);
@@ -79,7 +79,7 @@ Entry *CSPSCVariableBoundedChannel::New(uint32_t uSize) noexcept
     return nullptr;
 }
 
-void CSPSCVariableBoundedChannel::Post(Entry *pEntry) noexcept
+void CSPSCVariableBoundedChannel::Post(Entry *pEntry)
 {
     if (likely(pEntry != nullptr && pEntry->uMagic == kMagic))
     {
@@ -91,7 +91,7 @@ void CSPSCVariableBoundedChannel::Post(Entry *pEntry) noexcept
     m_Statsp.uFailed2++;
 }
 
-Entry *CSPSCVariableBoundedChannel::Get() noexcept
+Entry *CSPSCVariableBoundedChannel::Get()
 {
     auto pData = GetEntry();
     if (likely(pData != nullptr))
@@ -116,7 +116,7 @@ Entry *CSPSCVariableBoundedChannel::Get() noexcept
     return nullptr;
 }
 
-void CSPSCVariableBoundedChannel::Delete(Entry *pEntry) noexcept
+void CSPSCVariableBoundedChannel::Delete(Entry *pEntry)
 {
     if (likely(pEntry != nullptr && pEntry->uMagic == kMagic))
     {
@@ -128,17 +128,17 @@ void CSPSCVariableBoundedChannel::Delete(Entry *pEntry) noexcept
     m_Statsc.uFailed2++;
 }
 
-bool CSPSCVariableBoundedChannel::IsEmpty() const noexcept
+bool CSPSCVariableBoundedChannel::IsEmpty() const
 {
     return ACCESS_ONCE(m_Statsp.uCount2) == ACCESS_ONCE(m_Statsc.uCount2);
 }
 
-uint32_t CSPSCVariableBoundedChannel::GetSize() const noexcept
+uint32_t CSPSCVariableBoundedChannel::GetSize() const
 {
     return ACCESS_ONCE(m_Statsp.uCount2) - ACCESS_ONCE(m_Statsc.uCount2);
 }
 
-int32_t CSPSCVariableBoundedChannel::GetStats(IJson *pStats) const noexcept
+int32_t CSPSCVariableBoundedChannel::GetStats(IJson *pStats) const
 {
     if (likely(pStats != nullptr))
     {
@@ -164,7 +164,7 @@ int32_t CSPSCVariableBoundedChannel::GetStats(IJson *pStats) const noexcept
     return ErrorCode::kInvalidParam;
 }
 
-void *CSPSCVariableBoundedChannel::NewEntry(uint32_t uNewSize) noexcept
+void *CSPSCVariableBoundedChannel::NewEntry(uint32_t uNewSize)
 {
     if (unlikely(m_uTail - m_uHeadRef >= m_uSizep))
     {
@@ -237,7 +237,7 @@ void *CSPSCVariableBoundedChannel::NewEntry(uint32_t uNewSize) noexcept
     return nullptr;
 }
 
-void *CSPSCVariableBoundedChannel::GetEntry() noexcept
+void *CSPSCVariableBoundedChannel::GetEntry()
 {
     if (unlikely(m_uHead < m_uTailRef))
     {
@@ -292,7 +292,7 @@ void *CSPSCVariableBoundedChannel::GetEntry() noexcept
 }
 
 template<>
-SPSCVariableBoundedChannel *SPSCVariableBoundedChannel::Create(const ChannelConfig *pConfig) noexcept
+SPSCVariableBoundedChannel *SPSCVariableBoundedChannel::Create(const ChannelConfig *pConfig)
 {
     auto pChannel = IAllocatorEx::GetInstance()->New<CSPSCVariableBoundedChannel>();
     if (likely(pChannel != nullptr))
@@ -309,25 +309,25 @@ SPSCVariableBoundedChannel *SPSCVariableBoundedChannel::Create(const ChannelConf
 }
 
 template<>
-void SPSCVariableBoundedChannel::Destroy(IChannel *pChannel) noexcept
+void SPSCVariableBoundedChannel::Destroy(IChannel *pChannel)
 {
     IAllocatorEx::GetInstance()->Delete(reinterpret_cast<CSPSCVariableBoundedChannel *>(pChannel));
 }
 
 template<>
-void *SPSCVariableBoundedChannel::New() noexcept
+void *SPSCVariableBoundedChannel::New()
 {
     return reinterpret_cast<CSPSCVariableBoundedChannel *>(this)->New();
 }
 
 template<>
-void *SPSCVariableBoundedChannel::New(uint32_t uSize) noexcept
+void *SPSCVariableBoundedChannel::New(uint32_t uSize)
 {
     return reinterpret_cast<CSPSCVariableBoundedChannel *>(this)->New(uSize);
 }
 
 template<>
-void SPSCVariableBoundedChannel::Post(void *pData) noexcept
+void SPSCVariableBoundedChannel::Post(void *pData)
 {
     if (likely(pData != nullptr))
     {
@@ -337,13 +337,13 @@ void SPSCVariableBoundedChannel::Post(void *pData) noexcept
 }
 
 template<>
-void *SPSCVariableBoundedChannel::Get() noexcept
+void *SPSCVariableBoundedChannel::Get()
 {
     return reinterpret_cast<CSPSCVariableBoundedChannel *>(this)->Get();
 }
 
 template<>
-void SPSCVariableBoundedChannel::Delete(void *pData) noexcept
+void SPSCVariableBoundedChannel::Delete(void *pData)
 {
     if (likely(pData != nullptr))
     {
@@ -353,19 +353,19 @@ void SPSCVariableBoundedChannel::Delete(void *pData) noexcept
 }
 
 template<>
-bool SPSCVariableBoundedChannel::IsEmpty() const noexcept
+bool SPSCVariableBoundedChannel::IsEmpty() const
 {
     return reinterpret_cast<const CSPSCVariableBoundedChannel *>(this)->IsEmpty();
 }
 
 template<>
-uint32_t SPSCVariableBoundedChannel::GetSize() const noexcept
+uint32_t SPSCVariableBoundedChannel::GetSize() const
 {
     return reinterpret_cast<const CSPSCVariableBoundedChannel *>(this)->GetSize();
 }
 
 template<>
-int32_t SPSCVariableBoundedChannel::GetStats(IJson *pStats) const noexcept
+int32_t SPSCVariableBoundedChannel::GetStats(IJson *pStats) const
 {
     return reinterpret_cast<const CSPSCVariableBoundedChannel *>(this)->GetStats(pStats);
 }

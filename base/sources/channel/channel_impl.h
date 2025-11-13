@@ -51,7 +51,7 @@ struct ChannelStats
     uint64_t uCount2{0};  // uCount成对操作次数
     uint64_t uFailed2{0}; // 失败次数
 
-    void Reset() noexcept {
+    void Reset() {
         uCount = 0;
         uFailed = 0;
         uCount2 = 0;
@@ -59,7 +59,7 @@ struct ChannelStats
     }
 };
 
-inline uint64_t Up2PowerOf2(uint64_t uValue) noexcept
+inline uint64_t Up2PowerOf2(uint64_t uValue)
 {
     if (uValue == 0)
     {
@@ -75,7 +75,7 @@ inline uint64_t Up2PowerOf2(uint64_t uValue) noexcept
     return uValue + 1;
 }
 
-inline uint64_t GetIndex(uint64_t uIndex, uint64_t uSize) noexcept
+inline uint64_t GetIndex(uint64_t uIndex, uint64_t uSize)
 {
     return uIndex & (uSize - uint64_t(1));
 }

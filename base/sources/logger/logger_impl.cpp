@@ -43,7 +43,7 @@ static const char *LogLevelToString(ILogger::LogLevel eLevel)
     return szLogLevel[uIndex];
 }
 
-ILogger *ILogger::Create(IJson *pConfig) noexcept
+ILogger *ILogger::Create(IJson *pConfig)
 {
     auto pLogger = IAllocatorEx::GetInstance()->New<CLoggerImpl>();
     if (pLogger == nullptr)
@@ -65,7 +65,7 @@ ILogger *ILogger::Create(IJson *pConfig) noexcept
     return pLogger;
 }
 
-void ILogger::Destroy(ILogger *pLogger) noexcept
+void ILogger::Destroy(ILogger *pLogger)
 {
     if (pLogger != nullptr)
     {
@@ -73,12 +73,12 @@ void ILogger::Destroy(ILogger *pLogger) noexcept
     }
 }
 
-CLoggerImpl::~CLoggerImpl() noexcept
+CLoggerImpl::~CLoggerImpl()
 {
     Exit();
 }
 
-int32_t CLoggerImpl::Init(IJson *pConfig) noexcept
+int32_t CLoggerImpl::Init(IJson *pConfig)
 {
     if (pConfig == nullptr)
     {
@@ -161,7 +161,7 @@ int32_t CLoggerImpl::Init(IJson *pConfig) noexcept
     return ErrorCode::kSuccess;
 }
 
-void CLoggerImpl::Exit() noexcept
+void CLoggerImpl::Exit()
 {
     Stop();
 
@@ -188,7 +188,7 @@ void CLoggerImpl::Exit() noexcept
     }
 }
 
-int32_t CLoggerImpl::Start() noexcept
+int32_t CLoggerImpl::Start()
 {
     if (m_bAsync)
     {
@@ -211,7 +211,7 @@ int32_t CLoggerImpl::Start() noexcept
     return ErrorCode::kSuccess;
 }
 
-void CLoggerImpl::Stop() noexcept
+void CLoggerImpl::Stop()
 {
     if (m_bAsync)
     {
@@ -223,7 +223,7 @@ void CLoggerImpl::Stop() noexcept
     }
 }
 
-void CLoggerImpl::LogItem::CopyParams(IAllocator *pAllocator, const char **ppParams, uint32_t uParamCount) noexcept
+void CLoggerImpl::LogItem::CopyParams(IAllocator *pAllocator, const char **ppParams, uint32_t uParamCount)
 {
     this->ppParams = nullptr;
     this->uParamCount = 0;
@@ -255,7 +255,7 @@ void CLoggerImpl::LogItem::CopyParams(IAllocator *pAllocator, const char **ppPar
 
 int32_t CLoggerImpl::Log(int32_t iErrorNo, LogLevel eLevel, const char *pModule,
                         const char *pFileLine, const char *pFunction,
-                        const char *pFormat, const char **ppParams, uint32_t uParamCount) noexcept
+                        const char *pFormat, const char **ppParams, uint32_t uParamCount)
 {
     if (unlikely(m_uTid == UINT32_MAX))
     {
@@ -305,7 +305,7 @@ int32_t CLoggerImpl::Log(int32_t iErrorNo, LogLevel eLevel, const char *pModule,
     }
 }
 
-int32_t CLoggerImpl::LogFormat(int32_t iErrorNo, LogLevel eLevel, const char *pFormat, ...) noexcept
+int32_t CLoggerImpl::LogFormat(int32_t iErrorNo, LogLevel eLevel, const char *pFormat, ...)
 {
     if (unlikely(m_uTid == UINT32_MAX))
     {
@@ -375,7 +375,7 @@ int32_t CLoggerImpl::LogFormat(int32_t iErrorNo, LogLevel eLevel, const char *pF
     }
 }
 
-int32_t CLoggerImpl::GetStats(IJson *pJson) const noexcept
+int32_t CLoggerImpl::GetStats(IJson *pJson) const
 {
     if (pJson != nullptr)
     {

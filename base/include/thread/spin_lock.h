@@ -11,24 +11,24 @@ namespace base
 class SpinLock
 {
 public:
-    SpinLock() noexcept = default;
+    SpinLock() = default;
     SpinLock(const SpinLock &) = delete;
     SpinLock &operator=(const SpinLock &) = delete;
     SpinLock(SpinLock &&) = delete;
     SpinLock &operator=(SpinLock &&) = delete;
-    ~SpinLock() noexcept = default;
+    ~SpinLock() = default;
 
-    static SpinLock *Create() noexcept;
-    static void Destroy(SpinLock *pSpinLock) noexcept;
+    static SpinLock *Create();
+    static void Destroy(SpinLock *pSpinLock);
 
-    void Lock() noexcept;
-    void Unlock() noexcept;
+    void Lock();
+    void Unlock();
 };
 
 class SpinLockGuard
 {
 public:
-    SpinLockGuard(SpinLock *pSpinLock) noexcept : m_pSpinLock(pSpinLock)
+    SpinLockGuard(SpinLock *pSpinLock) : m_pSpinLock(pSpinLock)
     {
         if (likely(m_pSpinLock != nullptr))
         {
@@ -36,7 +36,7 @@ public:
         }
     }
 
-    ~SpinLockGuard() noexcept
+    ~SpinLockGuard()
     {
         if (likely(m_pSpinLock != nullptr))
         {

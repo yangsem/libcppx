@@ -21,19 +21,19 @@ public:
     CThreadImpl(CThreadImpl &&) = delete;
     CThreadImpl &operator=(CThreadImpl &&) = delete;
 
-    int32_t Bind(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadArg) noexcept override;
+    int32_t Bind(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadArg) override;
 
-    int32_t BindCpu(int32_t iCpuNo) noexcept override;
-    int32_t BindNode(int32_t iNodeNo) noexcept override;
+    int32_t BindCpu(int32_t iCpuNo) override;
+    int32_t BindNode(int32_t iNodeNo) override;
 
-    int32_t Start() noexcept override;
-    void Stop() noexcept override;
-    int32_t Pause() noexcept override;
-    int32_t Resume() noexcept override;
+    int32_t Start() override;
+    void Stop() override;
+    int32_t Pause() override;
+    int32_t Resume() override;
 
-    IThread::ThreadState GetThreadState() const noexcept override;
-    int32_t GetThreadId() const noexcept override;
-    uint64_t GetLastRunTimeNs() const noexcept override;
+    IThread::ThreadState GetThreadState() const override;
+    int32_t GetThreadId() const override;
+    uint64_t GetLastRunTimeNs() const override;
 private:
     void Run();
 

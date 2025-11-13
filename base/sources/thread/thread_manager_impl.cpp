@@ -8,12 +8,12 @@ namespace cppx
 namespace base
 {
 
-IThreadManager *IThreadManager::Create() noexcept
+IThreadManager *IThreadManager::Create()
 {
     return NEW CThreadManagerImpl();
 }
 
-void IThreadManager::Destroy(IThreadManager *pThreadManager) noexcept
+void IThreadManager::Destroy(IThreadManager *pThreadManager)
 {
     if (pThreadManager != nullptr)
     {
@@ -21,13 +21,13 @@ void IThreadManager::Destroy(IThreadManager *pThreadManager) noexcept
     }
 }
 
-IThreadManager *IThreadManager::GetInstance() noexcept
+IThreadManager *IThreadManager::GetInstance()
 {
     static CThreadManagerImpl s_threadManager;
     return &s_threadManager;
 }
 
-int32_t CThreadManagerImpl::RegisterThreadEventFunc(ThreadEventFunc pThreadEventFunc, void *pUserParam) noexcept
+int32_t CThreadManagerImpl::RegisterThreadEventFunc(ThreadEventFunc pThreadEventFunc, void *pUserParam)
 {
     if (pThreadEventFunc == nullptr)
     {
@@ -49,7 +49,7 @@ int32_t CThreadManagerImpl::RegisterThreadEventFunc(ThreadEventFunc pThreadEvent
     return 0;
 }
 
-IThread *CThreadManagerImpl::CreateThread() noexcept
+IThread *CThreadManagerImpl::CreateThread()
 {
     IThread *pThread = nullptr;
     try
@@ -74,7 +74,7 @@ IThread *CThreadManagerImpl::CreateThread() noexcept
     return pThread;
 }
 
-void CThreadManagerImpl::DestroyThread(IThread *pThread) noexcept
+void CThreadManagerImpl::DestroyThread(IThread *pThread)
 {
     if (pThread != nullptr)
     {
@@ -84,7 +84,7 @@ void CThreadManagerImpl::DestroyThread(IThread *pThread) noexcept
     }
 }
 
-int32_t CThreadManagerImpl::CreateThread(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadParam) noexcept
+int32_t CThreadManagerImpl::CreateThread(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadParam)
 {
     if (pThreadName == nullptr)
     {
@@ -126,7 +126,7 @@ int32_t CThreadManagerImpl::CreateThread(const char *pThreadName, IThread::Threa
     return 0;
 }
 
-int32_t CThreadManagerImpl::DestroyThread(const char *pThreadName) noexcept
+int32_t CThreadManagerImpl::DestroyThread(const char *pThreadName)
 {
     if (pThreadName == nullptr)
     {
@@ -148,19 +148,19 @@ int32_t CThreadManagerImpl::DestroyThread(const char *pThreadName) noexcept
     return 0;
 }
 
-int32_t CThreadManagerImpl::NewThreadLocalId() noexcept
+int32_t CThreadManagerImpl::NewThreadLocalId()
 {
     // 暂时先这么做，后续再优化
     return m_iThreadLocalId++;
 }
 
-void CThreadManagerImpl::FreeThreadLocalId(int32_t iThreadLocalId) noexcept
+void CThreadManagerImpl::FreeThreadLocalId(int32_t iThreadLocalId)
 {
     // 暂时先这么做，后续再优化
     UNSED(iThreadLocalId);
 }
 
-void* CThreadManagerImpl::GetThreadLocal(int32_t iThreadLocalId, uint64_t uThreadLocalSize) noexcept
+void* CThreadManagerImpl::GetThreadLocal(int32_t iThreadLocalId, uint64_t uThreadLocalSize)
 {
     // 暂时先这么做，后续再优化
     static thread_local int32_t tlsTid = -1;
@@ -189,7 +189,7 @@ void* CThreadManagerImpl::GetThreadLocal(int32_t iThreadLocalId, uint64_t uThrea
     return nullptr;
 }
 
-int32_t CThreadManagerImpl::ForEachAllThreadLocal(int32_t iThreadLocalId, IThreadManager::ThreadLocalForEachFunc pThreadLocalForEachFunc, void *pUserParam) noexcept
+int32_t CThreadManagerImpl::ForEachAllThreadLocal(int32_t iThreadLocalId, IThreadManager::ThreadLocalForEachFunc pThreadLocalForEachFunc, void *pUserParam)
 {
     if (pThreadLocalForEachFunc == nullptr)
     {
@@ -213,7 +213,7 @@ int32_t CThreadManagerImpl::ForEachAllThreadLocal(int32_t iThreadLocalId, IThrea
     return 0;
 }
 
-int32_t CThreadManagerImpl::GetStats(IJson *pJson) const noexcept
+int32_t CThreadManagerImpl::GetStats(IJson *pJson) const
 {
     if (pJson == nullptr)
     {

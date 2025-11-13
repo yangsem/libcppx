@@ -13,7 +13,7 @@ namespace base
 class EXPORT ITaskScheduler
 {
 protected:
-    virtual ~ITaskScheduler() noexcept = default;
+    virtual ~ITaskScheduler() = default;
 
 public:
     using TaskFunc = void (*) (void *);
@@ -60,20 +60,20 @@ public:
      * @return 成功返回调度器实例指针，失败返回 nullptr
      * @note 多线程安全
     */
-    static ITaskScheduler *Create(const char *pSchedulerName, uint32_t uPrecisionUs = 10) noexcept;
+    static ITaskScheduler *Create(const char *pSchedulerName, uint32_t uPrecisionUs = 10);
 
     /**
      * @brief 释放任务调度器实例
      * @param[in] 调用Create接口创建的 pScheduler
      * @note 接口多线程安全，但不能多线程Destory同一个pScheduler
     */
-    static void Destroy(ITaskScheduler *pScheduler) noexcept;
+    static void Destroy(ITaskScheduler *pScheduler);
 
     /**
      * @brief 启动调度器线程
      * @return 成功返回 0 ，否则失败
     */
-    virtual int32_t Start() noexcept = 0;
+    virtual int32_t Start() = 0;
 
     /**
      * @brief 同步停止调度器线程
@@ -87,18 +87,18 @@ public:
      * @return 成功返回 TaskID，否则返回 kInvalidTaskID
      * @note 多线程安全
     */
-    virtual int64_t PostTask(Task *pTask) noexcept = 0;
+    virtual int64_t PostTask(Task *pTask) = 0;
     virtual int64_t PostOnceTask(const char* pTaskName, TaskFunc pFunc, void* pCtx, 
-                                uint32_t uDelayUs) noexcept = 0;
+                                uint32_t uDelayUs) = 0;
     virtual int64_t PostPeriodicTask(const char* pTaskName, TaskFunc pFunc, void* pCtx, 
-                                     uint32_t uDelayUs, uint32_t uInternalUs) noexcept = 0;
+                                     uint32_t uDelayUs, uint32_t uInternalUs) = 0;
 
     /**
      * @brief 根据TaskID取消一个任务
      * @param[in] PostTask 返回的有效 TaskID
      * @return 成功返回 0，否则失败
     */
-    virtual int32_t CancleTask(int64_t iTaskID) noexcept = 0;
+    virtual int32_t CancleTask(int64_t iTaskID) = 0;
 
     /**
      * @brief 获取调度器统计信息
@@ -106,7 +106,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
     */
-    virtual int32_t GetStats(IJson *pJson) const noexcept = 0;
+    virtual int32_t GetStats(IJson *pJson) const = 0;
 };
 
 }

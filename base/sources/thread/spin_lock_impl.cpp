@@ -6,22 +6,22 @@ namespace cppx
 namespace base
 {
 
-SpinLock *SpinLock::Create() noexcept
+SpinLock *SpinLock::Create()
 {
     return IAllocatorEx::GetInstance()->New<CSpinLockImpl>();
 }
 
-void SpinLock::Destroy(SpinLock *pSpinLock) noexcept
+void SpinLock::Destroy(SpinLock *pSpinLock)
 {
     IAllocatorEx::GetInstance()->Delete(reinterpret_cast<CSpinLockImpl *>(pSpinLock));
 }
 
-void SpinLock::Lock() noexcept
+void SpinLock::Lock()
 {
     reinterpret_cast<CSpinLockImpl *>(this)->Lock();
 }
 
-void SpinLock::Unlock() noexcept
+void SpinLock::Unlock()
 {
     reinterpret_cast<CSpinLockImpl *>(this)->Unlock();
 }

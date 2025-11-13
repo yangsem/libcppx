@@ -17,16 +17,16 @@ class IChannelEx final : public IChannel<eChannelType, ElementType::kFixedSize, 
 {
     using ChannelType = IChannel<eChannelType, ElementType::kFixedSize, eLengthType>;
 protected:
-    virtual ~IChannelEx() noexcept = default;
+    virtual ~IChannelEx() = default;
 
 public:
-    static IChannelEx *Create(const ChannelConfig *pConfig) noexcept
+    static IChannelEx *Create(const ChannelConfig *pConfig)
     {
         const_cast<ChannelConfig *>(pConfig)->uElementSize = sizeof(T);
         return reinterpret_cast<IChannelEx *>(ChannelType::Create(pConfig));
     }
 
-    static void Destroy(IChannelEx *pChannel) noexcept
+    static void Destroy(IChannelEx *pChannel)
     {
         ChannelType::Destroy(reinterpret_cast<ChannelType *>(pChannel));
     }
@@ -37,7 +37,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    int32_t Push(T &&t) noexcept
+    int32_t Push(T &&t)
     {
         auto pData = this->New();
         if (likely(pData != nullptr))
@@ -63,7 +63,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    int32_t Pop(T &t) noexcept
+    int32_t Pop(T &t)
     {
         auto pData = this->Get();
         if (likely(pData != nullptr))

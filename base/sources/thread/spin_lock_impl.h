@@ -13,15 +13,15 @@ namespace base
 class CSpinLockImpl final : public SpinLock
 {
 public:
-    CSpinLockImpl() noexcept = default;
-    ~CSpinLockImpl() noexcept = default;
+    CSpinLockImpl() = default;
+    ~CSpinLockImpl() = default;
 
     CSpinLockImpl(const CSpinLockImpl &) = delete;
     CSpinLockImpl &operator=(const CSpinLockImpl &) = delete;
     CSpinLockImpl(CSpinLockImpl &&) = delete;
     CSpinLockImpl &operator=(CSpinLockImpl &&) = delete;
 
-    inline void Lock() noexcept
+    inline void Lock()
     {
         while (m_bLocked.test_and_set())
         {
@@ -29,7 +29,7 @@ public:
         }
     }
 
-    inline void Unlock() noexcept
+    inline void Unlock()
     {
         m_bLocked.clear();
     }

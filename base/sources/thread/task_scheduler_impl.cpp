@@ -7,7 +7,7 @@ namespace cppx
 namespace base
 {
 
-ITaskScheduler *ITaskScheduler::Create(const char *pSchedulerName, uint32_t uPrecisionUs) noexcept
+ITaskScheduler *ITaskScheduler::Create(const char *pSchedulerName, uint32_t uPrecisionUs)
 {
     CTaskSchedulerImpl *pScheduler = NEW CTaskSchedulerImpl();
     if (pScheduler == nullptr)
@@ -26,7 +26,7 @@ ITaskScheduler *ITaskScheduler::Create(const char *pSchedulerName, uint32_t uPre
     return pScheduler;
 }
 
-void ITaskScheduler::Destroy(ITaskScheduler *pScheduler) noexcept
+void ITaskScheduler::Destroy(ITaskScheduler *pScheduler)
 {
     if (pScheduler != nullptr)
     {
@@ -34,12 +34,12 @@ void ITaskScheduler::Destroy(ITaskScheduler *pScheduler) noexcept
     }
 }
 
-CTaskSchedulerImpl::~CTaskSchedulerImpl() noexcept
+CTaskSchedulerImpl::~CTaskSchedulerImpl()
 {
     Stop();
 }
 
-int32_t CTaskSchedulerImpl::Init(const char *pSchedulerName, uint32_t uPrecisionUs) noexcept
+int32_t CTaskSchedulerImpl::Init(const char *pSchedulerName, uint32_t uPrecisionUs)
 {
     if (pSchedulerName == nullptr)
     {
@@ -59,7 +59,7 @@ int32_t CTaskSchedulerImpl::Init(const char *pSchedulerName, uint32_t uPrecision
     return 0;
 }
 
-int32_t CTaskSchedulerImpl::Start() noexcept
+int32_t CTaskSchedulerImpl::Start()
 {
     if (m_pThread == nullptr)
     {
@@ -70,7 +70,7 @@ int32_t CTaskSchedulerImpl::Start() noexcept
     return m_pThread->Start();
 }
 
-void CTaskSchedulerImpl::Stop() noexcept
+void CTaskSchedulerImpl::Stop()
 {
     if (m_pThread == nullptr)
     {
@@ -81,7 +81,7 @@ void CTaskSchedulerImpl::Stop() noexcept
     m_cond.notify_one();
     m_pThread->Stop();
 }
-int64_t CTaskSchedulerImpl::PostTask(Task *pTask) noexcept
+int64_t CTaskSchedulerImpl::PostTask(Task *pTask)
 {
     if (unlikely(pTask == nullptr))
     {
@@ -128,7 +128,7 @@ int64_t CTaskSchedulerImpl::PostTask(Task *pTask) noexcept
     return m_iNextTaskID++;
 }
 
-int64_t CTaskSchedulerImpl::PostOnceTask(const char *pTaskName, TaskFunc pFunc, void *pCtx, uint32_t uDelayUs) noexcept
+int64_t CTaskSchedulerImpl::PostOnceTask(const char *pTaskName, TaskFunc pFunc, void *pCtx, uint32_t uDelayUs)
 {
     Task task;
     task.pTaskName = pTaskName;
@@ -144,7 +144,7 @@ int64_t CTaskSchedulerImpl::PostOnceTask(const char *pTaskName, TaskFunc pFunc, 
 }
 
 int64_t CTaskSchedulerImpl::PostPeriodicTask(const char* pTaskName, TaskFunc pFunc, void* pCtx, 
-                                             uint32_t uDelayUs, uint32_t uInternalUs) noexcept 
+                                             uint32_t uDelayUs, uint32_t uInternalUs) 
 {
     Task task;
     task.pTaskName = pTaskName;
@@ -159,7 +159,7 @@ int64_t CTaskSchedulerImpl::PostPeriodicTask(const char* pTaskName, TaskFunc pFu
     return PostTask(&task);
 }
 
-int32_t CTaskSchedulerImpl::CancleTask(int64_t iTaskID) noexcept
+int32_t CTaskSchedulerImpl::CancleTask(int64_t iTaskID)
 {
     /**
      * 暂时先这么实现，问题点：
@@ -179,7 +179,7 @@ int32_t CTaskSchedulerImpl::CancleTask(int64_t iTaskID) noexcept
     return ErrorCode::kInvalidParam;
 }
 
-int32_t CTaskSchedulerImpl::GetStats(IJson *pJson) const noexcept
+int32_t CTaskSchedulerImpl::GetStats(IJson *pJson) const
 {
     if (pJson == nullptr)
     {

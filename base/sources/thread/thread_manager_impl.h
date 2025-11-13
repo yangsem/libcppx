@@ -20,29 +20,29 @@ namespace base
 class CThreadManagerImpl final : public IThreadManager
 {
 public:
-    CThreadManagerImpl() noexcept = default;
-    ~CThreadManagerImpl() noexcept override = default;
+    CThreadManagerImpl() = default;
+    ~CThreadManagerImpl() override = default;
 
     CThreadManagerImpl(const CThreadManagerImpl &) = delete;
     CThreadManagerImpl &operator=(const CThreadManagerImpl &) = delete;
     CThreadManagerImpl(CThreadManagerImpl &&) = delete;
     CThreadManagerImpl &operator=(CThreadManagerImpl &&) = delete;
 
-    int32_t RegisterThreadEventFunc(ThreadEventFunc pThreadEventFunc, void *pUserParam) noexcept override;
+    int32_t RegisterThreadEventFunc(ThreadEventFunc pThreadEventFunc, void *pUserParam) override;
 
-    IThread *CreateThread() noexcept override;  
-    void DestroyThread(IThread *pThread) noexcept override;
+    IThread *CreateThread() override;  
+    void DestroyThread(IThread *pThread) override;
 
-    int32_t CreateThread(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadParam) noexcept override;
-    int32_t DestroyThread(const char *pThreadName) noexcept override;
+    int32_t CreateThread(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadParam) override;
+    int32_t DestroyThread(const char *pThreadName) override;
 
-    int32_t NewThreadLocalId() noexcept override;
-    void FreeThreadLocalId(int32_t iThreadLocalId) noexcept override;
+    int32_t NewThreadLocalId() override;
+    void FreeThreadLocalId(int32_t iThreadLocalId) override;
 
-    void* GetThreadLocal(int32_t iThreadLocalId, uint64_t uThreadLocalSize) noexcept override;
-    int32_t ForEachAllThreadLocal(int32_t iThreadLocalId, IThreadManager::ThreadLocalForEachFunc pThreadLocalForEachFunc, void *pUserParam) noexcept override;
+    void* GetThreadLocal(int32_t iThreadLocalId, uint64_t uThreadLocalSize) override;
+    int32_t ForEachAllThreadLocal(int32_t iThreadLocalId, IThreadManager::ThreadLocalForEachFunc pThreadLocalForEachFunc, void *pUserParam) override;
 
-    int32_t GetStats(IJson *pJson) const noexcept override;
+    int32_t GetStats(IJson *pJson) const override;
 
 private:
     std::atomic<int32_t> m_iThreadLocalId {0};

@@ -20,26 +20,26 @@ class CTaskSchedulerImpl final : public ITaskScheduler
 {
 public:
     CTaskSchedulerImpl() = default;
-    ~CTaskSchedulerImpl() noexcept override;
+    ~CTaskSchedulerImpl() override;
 
     CTaskSchedulerImpl(const CTaskSchedulerImpl &) = delete;
     CTaskSchedulerImpl &operator=(const CTaskSchedulerImpl &) = delete;
     CTaskSchedulerImpl(CTaskSchedulerImpl &&) = delete;
     CTaskSchedulerImpl &operator=(CTaskSchedulerImpl &&) = delete;
 
-    int32_t Init(const char *pSchedulerName, uint32_t uPrecisionUs) noexcept;
+    int32_t Init(const char *pSchedulerName, uint32_t uPrecisionUs);
 
-    int32_t Start() noexcept override;
-    void Stop() noexcept override;
+    int32_t Start() override;
+    void Stop() override;
 
-    int64_t PostTask(Task *pTask) noexcept override;
+    int64_t PostTask(Task *pTask) override;
     int64_t PostOnceTask(const char* pTaskName, TaskFunc pFunc, 
-                        void* pCtx, uint32_t uDelayUs) noexcept override;
+                        void* pCtx, uint32_t uDelayUs) override;
     int64_t PostPeriodicTask(const char* pTaskName, TaskFunc pFunc, void* pCtx, 
-                            uint32_t uDelayUs, uint32_t uInternalUs) noexcept override;
-    int32_t CancleTask(int64_t iTaskID) noexcept override;
+                            uint32_t uDelayUs, uint32_t uInternalUs) override;
+    int32_t CancleTask(int64_t iTaskID) override;
 
-    int32_t GetStats(IJson *pJson) const noexcept override;
+    int32_t GetStats(IJson *pJson) const override;
 
 private:
     static bool RunWrapper(void *ptr);

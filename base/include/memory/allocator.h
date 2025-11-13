@@ -12,28 +12,28 @@ namespace base
 class EXPORT IAllocator
 {
 public:
-    virtual ~IAllocator() noexcept = default;
+    virtual ~IAllocator() = default;
 
 public:
     /**
      * @brief 获取全局单例对象
      * @return 成功返回IAllocator对象指针，一定成功
      */
-    static IAllocator *GetInstance() noexcept;
+    static IAllocator *GetInstance();
 
     /**
      * @brief 创建一个IAllocator对象
      * @return 成功返回IAllocator对象指针，失败返回nullptr
      * @note 多线程安全
      */
-    static IAllocator *Create() noexcept;
+    static IAllocator *Create();
 
     /**
      * @brief 销毁一个IAllocator对象
      * @param pAllocator IAllocator对象指针
      * @note 多线程安全
      */
-    static void Destroy(IAllocator *pAllocator) noexcept;
+    static void Destroy(IAllocator *pAllocator);
 
     /**
      * @brief 初始化IAllocator对象
@@ -41,13 +41,13 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    virtual int32_t Init(const IJson *pConfig) noexcept = 0;
+    virtual int32_t Init(const IJson *pConfig) = 0;
     
     /**
      * @brief 清理IAllocator对象资源
      * @note 多线程安全
      */
-    virtual void Exit() noexcept = 0;
+    virtual void Exit() = 0;
 
     /**
      * @brief 分配内存
@@ -55,14 +55,14 @@ public:
      * @return 成功返回内存指针，失败返回nullptr
      * @note 多线程安全
      */
-    virtual void *Malloc(uint64_t uSize) noexcept = 0;
+    virtual void *Malloc(uint64_t uSize) = 0;
     
     /**
      * @brief 释放内存
      * @param pMem 内存指针
      * @note 多线程安全
      */
-    virtual void Free(const void *pMem) noexcept = 0;
+    virtual void Free(const void *pMem) = 0;
 
     /**
      * @brief 获取统计信息
@@ -70,7 +70,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    virtual int32_t GetStats(IJson *pJson) const noexcept = 0;
+    virtual int32_t GetStats(IJson *pJson) const = 0;
 };
 
 namespace config

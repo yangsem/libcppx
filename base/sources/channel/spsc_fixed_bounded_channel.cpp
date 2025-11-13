@@ -11,7 +11,7 @@ namespace base
 namespace channel
 {
 
-CSPSCFixedBoundedChannel::~CSPSCFixedBoundedChannel() noexcept
+CSPSCFixedBoundedChannel::~CSPSCFixedBoundedChannel()
 {
     if (m_pDatap != nullptr)
     {
@@ -21,7 +21,7 @@ CSPSCFixedBoundedChannel::~CSPSCFixedBoundedChannel() noexcept
     }
 }
 
-int32_t CSPSCFixedBoundedChannel::Init(uint64_t uElemSize, uint64_t uSize) noexcept
+int32_t CSPSCFixedBoundedChannel::Init(uint64_t uElemSize, uint64_t uSize)
 {
     m_uElemSizep = ALIGN8(uElemSize);
     m_uElemSizec = m_uElemSizep;
@@ -46,7 +46,7 @@ int32_t CSPSCFixedBoundedChannel::Init(uint64_t uElemSize, uint64_t uSize) noexc
     return ErrorCode::kSuccess;
 }
 
-void *CSPSCFixedBoundedChannel::New() noexcept
+void *CSPSCFixedBoundedChannel::New()
 {
     if (likely(m_uTail - m_uHeadRef < m_uSizep))
     {
@@ -65,13 +65,13 @@ void *CSPSCFixedBoundedChannel::New() noexcept
     return nullptr;
 }
 
-void *CSPSCFixedBoundedChannel::New(uint32_t uSize) noexcept
+void *CSPSCFixedBoundedChannel::New(uint32_t uSize)
 {
     UNSED(uSize);
     return nullptr;
 }
 
-void CSPSCFixedBoundedChannel::Post(void *pData) noexcept
+void CSPSCFixedBoundedChannel::Post(void *pData)
 {
     if (likely(pData != nullptr))
     {
@@ -82,7 +82,7 @@ void CSPSCFixedBoundedChannel::Post(void *pData) noexcept
     m_Statsp.uFailed2++;
 }
 
-void *CSPSCFixedBoundedChannel::Get() noexcept
+void *CSPSCFixedBoundedChannel::Get()
 {
     if (likely(m_uHead < m_uTailRef))
     {
@@ -101,7 +101,7 @@ void *CSPSCFixedBoundedChannel::Get() noexcept
     return nullptr;
 }
 
-void CSPSCFixedBoundedChannel::Delete(void *pData) noexcept
+void CSPSCFixedBoundedChannel::Delete(void *pData)
 {
     if (likely(pData != nullptr))
     {
@@ -112,17 +112,17 @@ void CSPSCFixedBoundedChannel::Delete(void *pData) noexcept
     m_Statsc.uFailed2++;
 }
 
-bool CSPSCFixedBoundedChannel::IsEmpty() const noexcept
+bool CSPSCFixedBoundedChannel::IsEmpty() const
 {
     return ACCESS_ONCE(m_uHead) == ACCESS_ONCE(m_uTail);
 }
 
-uint32_t CSPSCFixedBoundedChannel::GetSize() const noexcept
+uint32_t CSPSCFixedBoundedChannel::GetSize() const
 {
     return ACCESS_ONCE(m_uTail) - ACCESS_ONCE(m_uHead);
 }
 
-int32_t CSPSCFixedBoundedChannel::GetStats(IJson *pStats) const noexcept
+int32_t CSPSCFixedBoundedChannel::GetStats(IJson *pStats) const
 {
     if (likely(pStats != nullptr))
     {
@@ -149,7 +149,7 @@ int32_t CSPSCFixedBoundedChannel::GetStats(IJson *pStats) const noexcept
 }
 
 template<>
-SPSCFixedBoundedChannel *SPSCFixedBoundedChannel::Create(const ChannelConfig *pConfig) noexcept
+SPSCFixedBoundedChannel *SPSCFixedBoundedChannel::Create(const ChannelConfig *pConfig)
 {
     auto pChannel = IAllocatorEx::GetInstance()->New<CSPSCFixedBoundedChannel>();
     if (likely(pChannel != nullptr))
@@ -166,55 +166,55 @@ SPSCFixedBoundedChannel *SPSCFixedBoundedChannel::Create(const ChannelConfig *pC
 }
 
 template<>
-void SPSCFixedBoundedChannel::Destroy(IChannel *pChannel) noexcept
+void SPSCFixedBoundedChannel::Destroy(IChannel *pChannel)
 {
     IAllocatorEx::GetInstance()->Delete(reinterpret_cast<CSPSCFixedBoundedChannel *>(pChannel));
 }
 
 template<>
-void *SPSCFixedBoundedChannel::New() noexcept
+void *SPSCFixedBoundedChannel::New()
 {
     return reinterpret_cast<CSPSCFixedBoundedChannel *>(this)->New();
 }
 
 template<>
-void *SPSCFixedBoundedChannel::New(uint32_t uSize) noexcept
+void *SPSCFixedBoundedChannel::New(uint32_t uSize)
 {
     return reinterpret_cast<CSPSCFixedBoundedChannel *>(this)->New(uSize);
 }
 
 template<>
-void SPSCFixedBoundedChannel::Post(void *pData) noexcept
+void SPSCFixedBoundedChannel::Post(void *pData)
 {
     reinterpret_cast<CSPSCFixedBoundedChannel *>(this)->Post(pData);
 }
 
 template<>
-void *SPSCFixedBoundedChannel::Get() noexcept
+void *SPSCFixedBoundedChannel::Get()
 {
     return reinterpret_cast<CSPSCFixedBoundedChannel *>(this)->Get();
 }
 
 template<>
-void SPSCFixedBoundedChannel::Delete(void *pData) noexcept
+void SPSCFixedBoundedChannel::Delete(void *pData)
 {
     reinterpret_cast<CSPSCFixedBoundedChannel *>(this)->Delete(pData);
 }
 
 template<>
-bool SPSCFixedBoundedChannel::IsEmpty() const noexcept
+bool SPSCFixedBoundedChannel::IsEmpty() const
 {
     return reinterpret_cast<const CSPSCFixedBoundedChannel *>(this)->IsEmpty();
 }
 
 template<>
-uint32_t SPSCFixedBoundedChannel::GetSize() const noexcept
+uint32_t SPSCFixedBoundedChannel::GetSize() const
 {
     return reinterpret_cast<const CSPSCFixedBoundedChannel *>(this)->GetSize();
 }
 
 template<>
-int32_t SPSCFixedBoundedChannel::GetStats(IJson *pStats) const noexcept
+int32_t SPSCFixedBoundedChannel::GetStats(IJson *pStats) const
 {
     return reinterpret_cast<const CSPSCFixedBoundedChannel *>(this)->GetStats(pStats);
 }

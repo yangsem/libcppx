@@ -13,26 +13,26 @@ namespace base
 class IAllocatorEx : public IAllocator
 {
 protected:
-    virtual ~IAllocatorEx() noexcept = default;
+    virtual ~IAllocatorEx() = default;
 
 public:
-    static IAllocatorEx *GetInstance() noexcept
+    static IAllocatorEx *GetInstance()
     {
         return reinterpret_cast<IAllocatorEx *>(IAllocator::GetInstance());
     }
 
-    static IAllocatorEx *Create() noexcept
+    static IAllocatorEx *Create()
     {
         return reinterpret_cast<IAllocatorEx *>(IAllocator::Create());
     }
 
-    static void Destroy(IAllocatorEx *pAllocator) noexcept
+    static void Destroy(IAllocatorEx *pAllocator)
     {
         IAllocator::Destroy(reinterpret_cast<IAllocator *>(pAllocator));
     }
     
     template<typename T, typename... Args>
-    T *New(Args&&... args) noexcept
+    T *New(Args&&... args)
     {
         auto pMem = Malloc(sizeof(T));
         if (likely(pMem != nullptr))
@@ -51,7 +51,7 @@ public:
     }
 
     template<typename T>
-    void Delete(T *pMem) noexcept
+    void Delete(T *pMem)
     {
         if (likely(pMem != nullptr))
         {

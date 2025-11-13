@@ -13,27 +13,27 @@ namespace channel
 class CSPSCFixedBoundedChannel
 {
 public:
-    CSPSCFixedBoundedChannel() noexcept = default;
+    CSPSCFixedBoundedChannel() = default;
     CSPSCFixedBoundedChannel(const CSPSCFixedBoundedChannel &) = delete;
     CSPSCFixedBoundedChannel &operator=(const CSPSCFixedBoundedChannel &) = delete;
     CSPSCFixedBoundedChannel(CSPSCFixedBoundedChannel &&) = delete;
     CSPSCFixedBoundedChannel &operator=(CSPSCFixedBoundedChannel &&) = delete;
 
-    ~CSPSCFixedBoundedChannel() noexcept;
+    ~CSPSCFixedBoundedChannel();
 
-    int32_t Init(uint64_t uElemSize, uint64_t uSize) noexcept;
+    int32_t Init(uint64_t uElemSize, uint64_t uSize);
 
-    void *New() noexcept;
-    void *New(uint32_t uSize) noexcept;
-    void Post(void *pData) noexcept;
+    void *New();
+    void *New(uint32_t uSize);
+    void Post(void *pData);
 
-    void *Get() noexcept;
-    void Delete(void *pData) noexcept;
+    void *Get();
+    void Delete(void *pData);
 
-    bool IsEmpty() const noexcept;
-    uint32_t GetSize() const noexcept;
+    bool IsEmpty() const;
+    uint32_t GetSize() const;
 
-    int32_t GetStats(IJson *pStats) const noexcept;
+    int32_t GetStats(IJson *pStats) const;
 
 private:
     // producer

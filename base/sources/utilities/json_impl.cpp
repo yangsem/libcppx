@@ -45,12 +45,12 @@ static Json::ValueType GetJsonValueType(IJson::JsonType jsonType)
 }
 
 
-IJson *IJson::Create(JsonType jsonType) noexcept
+IJson *IJson::Create(JsonType jsonType)
 {
     return IAllocatorEx::GetInstance()->New<CJsonImpl>(jsonType);
 }
 
-void IJson::Destroy(IJson *pJson) noexcept
+void IJson::Destroy(IJson *pJson)
 {
     if (likely(pJson != nullptr))
     {
@@ -83,7 +83,7 @@ CJsonImpl::CJsonImpl(const Json::Value &&jsonValue)
 {
 }
 
-CJsonImpl::~CJsonImpl() noexcept
+CJsonImpl::~CJsonImpl()
 {
     for (auto pJsonValue : m_vecJsonValues)
     {
@@ -92,7 +92,7 @@ CJsonImpl::~CJsonImpl() noexcept
     m_vecJsonValues.clear();
 }
 
-int32_t CJsonImpl::Parse(const char *pJsonStr) noexcept
+int32_t CJsonImpl::Parse(const char *pJsonStr)
 {
     if (unlikely(pJsonStr == nullptr))
     {
@@ -122,7 +122,7 @@ int32_t CJsonImpl::Parse(const char *pJsonStr) noexcept
     return 0;
 }
 
-int32_t CJsonImpl::ParseFile(const char *pJsonFile) noexcept
+int32_t CJsonImpl::ParseFile(const char *pJsonFile)
 {
     if (unlikely(pJsonFile == nullptr))
     {
@@ -158,7 +158,7 @@ int32_t CJsonImpl::ParseFile(const char *pJsonFile) noexcept
 }
 
 template<typename T>
-T CJsonImpl::GetValue(const char *pKey, T defaultValue) const noexcept
+T CJsonImpl::GetValue(const char *pKey, T defaultValue) const
 {
     if (likely(pKey != nullptr && m_jsonValue.isMember(pKey)))
     {
@@ -174,42 +174,42 @@ T CJsonImpl::GetValue(const char *pKey, T defaultValue) const noexcept
     return defaultValue;
 }
 
-bool CJsonImpl::GetBool(const char *pKey, bool bDefault) const noexcept
+bool CJsonImpl::GetBool(const char *pKey, bool bDefault) const
 {
     return GetValue(pKey, bDefault);
 }
 
-int32_t CJsonImpl::GetInt32(const char *pKey, int32_t iDefault) const noexcept
+int32_t CJsonImpl::GetInt32(const char *pKey, int32_t iDefault) const
 {
     return GetValue(pKey, iDefault);
 }
 
-int64_t CJsonImpl::GetInt64(const char *pKey, int64_t iDefault) const noexcept
+int64_t CJsonImpl::GetInt64(const char *pKey, int64_t iDefault) const
 {
     return GetValue(pKey, iDefault);
 }
 
-uint32_t CJsonImpl::GetUint32(const char *pKey, uint32_t uDefault) const noexcept
+uint32_t CJsonImpl::GetUint32(const char *pKey, uint32_t uDefault) const
 {
     return GetValue(pKey, uDefault);
 }
 
-uint64_t CJsonImpl::GetUint64(const char *pKey, uint64_t uDefault) const noexcept
+uint64_t CJsonImpl::GetUint64(const char *pKey, uint64_t uDefault) const
 {
     return GetValue(pKey, uDefault);
 }
 
-double CJsonImpl::GetDouble(const char *pKey, double dDefault) const noexcept
+double CJsonImpl::GetDouble(const char *pKey, double dDefault) const
 {
     return GetValue(pKey, dDefault);
 }
 
-const char *CJsonImpl::GetString(const char *pKey, const char *pDefault) const noexcept
+const char *CJsonImpl::GetString(const char *pKey, const char *pDefault) const
 {
     return GetValue(pKey, pDefault);
 }
 
-const IJson *CJsonImpl::GetObject(const char *pKey) const noexcept
+const IJson *CJsonImpl::GetObject(const char *pKey) const
 {
     if (likely(pKey != nullptr && m_jsonValue.isMember(pKey) && m_jsonValue[pKey].isObject()))
     {
@@ -236,7 +236,7 @@ const IJson *CJsonImpl::GetObject(const char *pKey) const noexcept
     return nullptr;
 }
 
-int32_t CJsonImpl::GetObject(const char *pKey, IJson *pJson) const noexcept
+int32_t CJsonImpl::GetObject(const char *pKey, IJson *pJson) const
 {
     if (likely(pKey != nullptr && pJson != nullptr && m_jsonValue.isMember(pKey) && m_jsonValue[pKey].isObject()))
     {
@@ -260,7 +260,7 @@ int32_t CJsonImpl::GetObject(const char *pKey, IJson *pJson) const noexcept
     return ErrorCode::kInvalidParam;
 }
 
-const IJson *CJsonImpl::GetArray(const char *pKey) const noexcept
+const IJson *CJsonImpl::GetArray(const char *pKey) const
 {
     if (likely(pKey != nullptr && m_jsonValue.isMember(pKey) && m_jsonValue[pKey].isArray()))
     {
@@ -287,7 +287,7 @@ const IJson *CJsonImpl::GetArray(const char *pKey) const noexcept
     return nullptr;
 }
 
-int32_t CJsonImpl::GetArray(const char *pKey, IJson *pJson) const noexcept
+int32_t CJsonImpl::GetArray(const char *pKey, IJson *pJson) const
 {
     if (likely(pKey != nullptr && pJson != nullptr && m_jsonValue.isMember(pKey) && m_jsonValue[pKey].isArray()))
     {
@@ -312,7 +312,7 @@ int32_t CJsonImpl::GetArray(const char *pKey, IJson *pJson) const noexcept
 }
 
 template<typename T>
-int32_t CJsonImpl::SetValue(const char *pKey, T &value) noexcept
+int32_t CJsonImpl::SetValue(const char *pKey, T &value)
 {
     if (likely(pKey != nullptr))
     {
@@ -332,37 +332,37 @@ int32_t CJsonImpl::SetValue(const char *pKey, T &value) noexcept
     return ErrorCode::kInvalidParam;
 }
 
-int32_t CJsonImpl::SetBool(const char *pKey, bool bValue) noexcept
+int32_t CJsonImpl::SetBool(const char *pKey, bool bValue)
 {
     return SetValue(pKey, bValue);
 }
 
-int32_t CJsonImpl::SetInt32(const char *pKey, int32_t iValue) noexcept
+int32_t CJsonImpl::SetInt32(const char *pKey, int32_t iValue)
 {
     return SetValue(pKey, iValue);
 }
 
-int32_t CJsonImpl::SetInt64(const char *pKey, int64_t iValue) noexcept
+int32_t CJsonImpl::SetInt64(const char *pKey, int64_t iValue)
 {
     return SetValue(pKey, iValue);
 }
 
-int32_t CJsonImpl::SetUint32(const char *pKey, uint32_t uValue) noexcept
+int32_t CJsonImpl::SetUint32(const char *pKey, uint32_t uValue)
 {
     return SetValue(pKey, uValue);
 }
 
-int32_t CJsonImpl::SetUint64(const char *pKey, uint64_t uValue) noexcept
+int32_t CJsonImpl::SetUint64(const char *pKey, uint64_t uValue)
 {
     return SetValue(pKey, uValue);
 }
 
-int32_t CJsonImpl::SetDouble(const char *pKey, double dValue) noexcept
+int32_t CJsonImpl::SetDouble(const char *pKey, double dValue)
 {
     return SetValue(pKey, dValue);
 }
 
-int32_t CJsonImpl::SetString(const char *pKey, const char *pValue) noexcept
+int32_t CJsonImpl::SetString(const char *pKey, const char *pValue)
 {
     if (likely(pValue != nullptr))
     {
@@ -373,7 +373,7 @@ int32_t CJsonImpl::SetString(const char *pKey, const char *pValue) noexcept
     return ErrorCode::kInvalidParam;
 }
 
-int32_t CJsonImpl::SetObject(const char *pKey, IJson *pJson) noexcept
+int32_t CJsonImpl::SetObject(const char *pKey, IJson *pJson)
 {
     auto pJsonImpl = dynamic_cast<CJsonImpl *>(pJson);
     if (likely(pJsonImpl != nullptr))
@@ -385,7 +385,7 @@ int32_t CJsonImpl::SetObject(const char *pKey, IJson *pJson) noexcept
     return ErrorCode::kInvalidParam;
 }
 
-IJson *CJsonImpl::SetObject(const char *pKey) noexcept
+IJson *CJsonImpl::SetObject(const char *pKey)
 {
     Json::Value jsonValue(Json::objectValue);
     if (SetValue(pKey, jsonValue) == ErrorCode::kSuccess)
@@ -413,7 +413,7 @@ IJson *CJsonImpl::SetObject(const char *pKey) noexcept
     return nullptr;
 }
 
-int32_t CJsonImpl::SetArray(const char *pKey, IJson *pJson) noexcept
+int32_t CJsonImpl::SetArray(const char *pKey, IJson *pJson)
 {
     auto pJsonImpl = dynamic_cast<CJsonImpl *>(pJson);
     if (likely(pJsonImpl != nullptr))
@@ -425,7 +425,7 @@ int32_t CJsonImpl::SetArray(const char *pKey, IJson *pJson) noexcept
     return ErrorCode::kInvalidParam;
 }
 
-IJson *CJsonImpl::SetArray(const char *pKey) noexcept
+IJson *CJsonImpl::SetArray(const char *pKey)
 {
     Json::Value jsonValue(Json::arrayValue);
     if (SetValue(pKey, jsonValue) == ErrorCode::kSuccess)
@@ -454,7 +454,7 @@ IJson *CJsonImpl::SetArray(const char *pKey) noexcept
 }
 
 template<typename T>
-T CJsonImpl::GetValue(uint32_t iIndex, T defaultValue) const noexcept
+T CJsonImpl::GetValue(uint32_t iIndex, T defaultValue) const
 {
     if (likely(m_jsonValue.isArray() && iIndex < m_jsonValue.size()))
     {
@@ -470,42 +470,42 @@ T CJsonImpl::GetValue(uint32_t iIndex, T defaultValue) const noexcept
     return defaultValue;
 }
 
-bool CJsonImpl::GetBool(uint32_t iIndex, bool bDefault) const noexcept
+bool CJsonImpl::GetBool(uint32_t iIndex, bool bDefault) const
 {
     return GetValue(iIndex, bDefault);
 }
 
-int32_t CJsonImpl::GetInt32(uint32_t iIndex, int32_t iDefault) const noexcept
+int32_t CJsonImpl::GetInt32(uint32_t iIndex, int32_t iDefault) const
 {
     return GetValue(iIndex, iDefault);
 }
 
-int64_t CJsonImpl::GetInt64(uint32_t iIndex, int64_t iDefault) const noexcept
+int64_t CJsonImpl::GetInt64(uint32_t iIndex, int64_t iDefault) const
 {
     return GetValue(iIndex, iDefault);
 }
 
-uint32_t CJsonImpl::GetUint32(uint32_t iIndex, uint32_t uDefault) const noexcept
+uint32_t CJsonImpl::GetUint32(uint32_t iIndex, uint32_t uDefault) const
 {
     return GetValue(iIndex, uDefault);
 }
 
-uint64_t CJsonImpl::GetUint64(uint32_t iIndex, uint64_t uDefault) const noexcept
+uint64_t CJsonImpl::GetUint64(uint32_t iIndex, uint64_t uDefault) const
 {
     return GetValue(iIndex, uDefault);
 }
 
-double CJsonImpl::GetDouble(uint32_t iIndex, double dDefault) const noexcept
+double CJsonImpl::GetDouble(uint32_t iIndex, double dDefault) const
 {
     return GetValue(iIndex, dDefault);
 }
 
-const char *CJsonImpl::GetString(uint32_t iIndex, const char *pDefault) const noexcept
+const char *CJsonImpl::GetString(uint32_t iIndex, const char *pDefault) const
 {
     return GetValue(iIndex, pDefault);
 }
 
-const IJson *CJsonImpl::GetObject(uint32_t iIndex) const noexcept
+const IJson *CJsonImpl::GetObject(uint32_t iIndex) const
 {
     if (likely(m_jsonValue.isArray() && iIndex < m_jsonValue.size()))
     {
@@ -532,7 +532,7 @@ const IJson *CJsonImpl::GetObject(uint32_t iIndex) const noexcept
     return nullptr;
 }
 
-int32_t CJsonImpl::GetObject(uint32_t iIndex, IJson *pJson) const noexcept
+int32_t CJsonImpl::GetObject(uint32_t iIndex, IJson *pJson) const
 {
     if (likely(m_jsonValue.isArray() && iIndex < m_jsonValue.size()))
     {
@@ -556,7 +556,7 @@ int32_t CJsonImpl::GetObject(uint32_t iIndex, IJson *pJson) const noexcept
     return ErrorCode::kInvalidParam;
 }
 
-const IJson *CJsonImpl::GetArray(uint32_t iIndex) const noexcept
+const IJson *CJsonImpl::GetArray(uint32_t iIndex) const
 {
     if (likely(m_jsonValue.isArray() && iIndex < m_jsonValue.size()))
     {
@@ -583,7 +583,7 @@ const IJson *CJsonImpl::GetArray(uint32_t iIndex) const noexcept
     return nullptr;
 }
 
-int32_t CJsonImpl::GetArray(uint32_t iIndex, IJson *pJson) const noexcept
+int32_t CJsonImpl::GetArray(uint32_t iIndex, IJson *pJson) const
 {
     if (likely(m_jsonValue.isArray() && iIndex < m_jsonValue.size()))
     {
@@ -608,7 +608,7 @@ int32_t CJsonImpl::GetArray(uint32_t iIndex, IJson *pJson) const noexcept
 }
 
 template<typename T>
-int32_t CJsonImpl::AppendValue(T &value) noexcept
+int32_t CJsonImpl::AppendValue(T &value)
 {
     if (likely(m_jsonValue.isArray()))
     {
@@ -628,37 +628,37 @@ int32_t CJsonImpl::AppendValue(T &value) noexcept
     return ErrorCode::kInvalidParam;
 }
 
-int32_t CJsonImpl::AppendBool(bool bValue) noexcept
+int32_t CJsonImpl::AppendBool(bool bValue)
 {
     return AppendValue(bValue);
 }
 
-int32_t CJsonImpl::AppendInt32(int32_t iValue) noexcept
+int32_t CJsonImpl::AppendInt32(int32_t iValue)
 {
     return AppendValue(iValue);
 }
 
-int32_t CJsonImpl::AppendInt64(int64_t iValue) noexcept
+int32_t CJsonImpl::AppendInt64(int64_t iValue)
 {
     return AppendValue(iValue);
 }
 
-int32_t CJsonImpl::AppendUint32(uint32_t uValue) noexcept
+int32_t CJsonImpl::AppendUint32(uint32_t uValue)
 {
     return AppendValue(uValue);
 }
 
-int32_t CJsonImpl::AppendUint64(uint64_t uValue) noexcept
+int32_t CJsonImpl::AppendUint64(uint64_t uValue)
 {
     return AppendValue(uValue);
 }
 
-int32_t CJsonImpl::AppendDouble(double dValue) noexcept
+int32_t CJsonImpl::AppendDouble(double dValue)
 {
     return AppendValue(dValue);
 }
 
-int32_t CJsonImpl::AppendString(const char *pValue) noexcept
+int32_t CJsonImpl::AppendString(const char *pValue)
 {
     if (likely(pValue != nullptr))
     {
@@ -669,7 +669,7 @@ int32_t CJsonImpl::AppendString(const char *pValue) noexcept
     return ErrorCode::kInvalidParam;
 }
 
-int32_t CJsonImpl::AppendObject(IJson *pJson) noexcept
+int32_t CJsonImpl::AppendObject(IJson *pJson)
 {
     auto pCJsonImpl = dynamic_cast<CJsonImpl *>(pJson);
     if (likely(pCJsonImpl != nullptr && pCJsonImpl->m_jsonValue.isObject()))
@@ -681,7 +681,7 @@ int32_t CJsonImpl::AppendObject(IJson *pJson) noexcept
     return ErrorCode::kInvalidParam;
 }
 
-IJson *CJsonImpl::AppendObject() noexcept
+IJson *CJsonImpl::AppendObject()
 {
     Json::Value jsonValue(Json::objectValue);
     if (AppendValue(jsonValue) == ErrorCode::kSuccess)
@@ -710,7 +710,7 @@ IJson *CJsonImpl::AppendObject() noexcept
     return nullptr;
 }
 
-int32_t CJsonImpl::AppendArray(IJson *pJson) noexcept
+int32_t CJsonImpl::AppendArray(IJson *pJson)
 {
     auto pCJsonImpl = dynamic_cast<CJsonImpl *>(pJson);
     if (likely(pCJsonImpl != nullptr && pCJsonImpl->m_jsonValue.isArray()))
@@ -722,7 +722,7 @@ int32_t CJsonImpl::AppendArray(IJson *pJson) noexcept
     return ErrorCode::kInvalidParam;
 }
 
-IJson *CJsonImpl::AppendArray() noexcept
+IJson *CJsonImpl::AppendArray()
 {
     Json::Value jsonValue(Json::arrayValue);
     if (AppendValue(jsonValue) == ErrorCode::kSuccess)
@@ -750,7 +750,7 @@ IJson *CJsonImpl::AppendArray() noexcept
     return nullptr;
 }
 
-void CJsonImpl::Delete(const char *pKey) noexcept
+void CJsonImpl::Delete(const char *pKey)
 {
     if (likely(pKey != nullptr))
     {
@@ -758,7 +758,7 @@ void CJsonImpl::Delete(const char *pKey) noexcept
     }
 }
 
-void CJsonImpl::Clear() noexcept
+void CJsonImpl::Clear()
 {
     for (auto pJsonValue : m_vecJsonValues)
     {
@@ -768,7 +768,7 @@ void CJsonImpl::Clear() noexcept
     m_jsonValue.clear();
 }
 
-const char *CJsonImpl::ToString(bool bPretty) const noexcept
+const char *CJsonImpl::ToString(bool bPretty) const
 {
     try
     {
@@ -800,7 +800,7 @@ const char *CJsonImpl::ToString(bool bPretty) const noexcept
     return nullptr;
 }
 
-IJson::JsonType CJsonImpl::GetType(const char *pKey) const noexcept
+IJson::JsonType CJsonImpl::GetType(const char *pKey) const
 {
     Json::ValueType jsonType = Json::ValueType::nullValue;
     if (pKey == nullptr)
@@ -815,7 +815,7 @@ IJson::JsonType CJsonImpl::GetType(const char *pKey) const noexcept
     return GetIJsonType(jsonType);
 }
 
-IJson::JsonType CJsonImpl::GetType(uint32_t iIndex) const noexcept
+IJson::JsonType CJsonImpl::GetType(uint32_t iIndex) const
 {
     Json::ValueType jsonType = Json::ValueType::nullValue;
     if (likely(m_jsonValue.isArray() && iIndex < m_jsonValue.size()))
@@ -826,7 +826,7 @@ IJson::JsonType CJsonImpl::GetType(uint32_t iIndex) const noexcept
     return GetIJsonType(jsonType);
 }
 
-uint32_t CJsonImpl::GetSize() const noexcept
+uint32_t CJsonImpl::GetSize() const
 {
     return m_jsonValue.size();
 }

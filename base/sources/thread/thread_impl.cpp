@@ -7,7 +7,7 @@ namespace cppx
 namespace base
 {
 
-IThread *IThread::Create(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadArg) noexcept
+IThread *IThread::Create(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadArg)
 {
     if (pThreadName == nullptr)
     {
@@ -20,7 +20,7 @@ IThread *IThread::Create(const char *pThreadName, IThread::ThreadFunc pThreadFun
     return pThread;
 }
 
-void IThread::Destroy(IThread *pThread) noexcept
+void IThread::Destroy(IThread *pThread)
 {
     if (pThread != nullptr)
     {
@@ -40,7 +40,7 @@ CThreadImpl::~CThreadImpl()
     Stop();
 }
 
-int32_t CThreadImpl::Bind(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadArg) noexcept
+int32_t CThreadImpl::Bind(const char *pThreadName, IThread::ThreadFunc pThreadFunc, void *pThreadArg)
 {
     if (pThreadName == nullptr)
     {
@@ -65,7 +65,7 @@ int32_t CThreadImpl::Bind(const char *pThreadName, IThread::ThreadFunc pThreadFu
     return 0;
 }
 
-int32_t CThreadImpl::BindCpu(int32_t iCpuNo) noexcept
+int32_t CThreadImpl::BindCpu(int32_t iCpuNo)
 {
     if (m_bRunning)
     {
@@ -91,7 +91,7 @@ int32_t CThreadImpl::BindCpu(int32_t iCpuNo) noexcept
     return 0;
 }
 
-int32_t CThreadImpl::BindNode(int32_t iNodeNo) noexcept
+int32_t CThreadImpl::BindNode(int32_t iNodeNo)
 {
     if (m_bRunning)
     {
@@ -115,7 +115,7 @@ int32_t CThreadImpl::BindNode(int32_t iNodeNo) noexcept
     return 0;
 }
 
-int32_t CThreadImpl::Start() noexcept
+int32_t CThreadImpl::Start()
 {
     if (m_bRunning)
     {
@@ -143,7 +143,7 @@ int32_t CThreadImpl::Start() noexcept
     return 0;
 }
 
-void CThreadImpl::Stop() noexcept
+void CThreadImpl::Stop()
 {
     if (m_bRunning == false)
     {
@@ -157,7 +157,7 @@ void CThreadImpl::Stop() noexcept
     }
 }
 
-int32_t CThreadImpl::Pause() noexcept
+int32_t CThreadImpl::Pause()
 {
     auto state = ACCESS_ONCE(m_eCurrState);
     if (state == IThread::ThreadState::kRunning)
@@ -176,7 +176,7 @@ int32_t CThreadImpl::Pause() noexcept
     return 0;
 }
 
-int32_t CThreadImpl::Resume() noexcept
+int32_t CThreadImpl::Resume()
 {
     auto state = ACCESS_ONCE(m_eCurrState);
     if (state == IThread::ThreadState::kPaused)
@@ -191,17 +191,17 @@ int32_t CThreadImpl::Resume() noexcept
     return 0;
 }
 
-IThread::ThreadState CThreadImpl::GetThreadState() const noexcept
+IThread::ThreadState CThreadImpl::GetThreadState() const
 {
     return m_eCurrState;
 }
 
-int32_t CThreadImpl::GetThreadId() const noexcept
+int32_t CThreadImpl::GetThreadId() const
 {
     return m_iThreadId;
 }
 
-uint64_t CThreadImpl::GetLastRunTimeNs() const noexcept
+uint64_t CThreadImpl::GetLastRunTimeNs() const
 {
     return m_uLastLoopTimeNs;
 }

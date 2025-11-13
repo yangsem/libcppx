@@ -1,13 +1,10 @@
 #ifndef __CPPX_LOGGER_IMPL_H__
 #define __CPPX_LOGGER_IMPL_H__
 
-#include "memory/allocator.h"
-#include <cstdint>
 #include <logger/logger.h>
 #include <thread/thread_manager.h>
 #include <channel/channel.h>
 #include <memory/allocator_ex.h>
-#include <cstdio>
 #include <condition_variable>
 #include <string>
 
@@ -52,31 +49,31 @@ public:
         const char *pFormat;
         char **ppParams;
 
-        void CopyParams(IAllocator *pAllocator, const char **ppParams, uint32_t uParamCount) noexcept;
+        void CopyParams(IAllocator *pAllocator, const char **ppParams, uint32_t uParamCount);
     };
 
 public:
-    CLoggerImpl() noexcept = default;
+    CLoggerImpl() = default;
     CLoggerImpl(const CLoggerImpl &) = delete;
     CLoggerImpl &operator=(const CLoggerImpl &) = delete;
     CLoggerImpl(CLoggerImpl &&) = delete;
     CLoggerImpl &operator=(CLoggerImpl &&) = delete;
 
-    ~CLoggerImpl() noexcept override;
+    ~CLoggerImpl() override;
 
-    int32_t Init(IJson *pConfig) noexcept override;
-    void Exit() noexcept override;
+    int32_t Init(IJson *pConfig) override;
+    void Exit() override;
 
-    int32_t Start() noexcept override;
-    void Stop() noexcept override;
+    int32_t Start() override;
+    void Stop() override;
 
     int32_t Log(int32_t iErrorNo, LogLevel eLevel, const char *pModule,
                 const char *pFileLine, const char *pFunction,
-                const char *pFormat, const char **ppParams, uint32_t uParamCount) noexcept override;
+                const char *pFormat, const char **ppParams, uint32_t uParamCount) override;
 
-    int32_t LogFormat(int32_t iErrorNo, LogLevel eLevel, const char *pFormat, ...) noexcept override;
+    int32_t LogFormat(int32_t iErrorNo, LogLevel eLevel, const char *pFormat, ...) override;
 
-    int32_t GetStats(IJson *pJson) const noexcept override;
+    int32_t GetStats(IJson *pJson) const override;
 
 private:
     static bool RunWrapper(void *pArg);

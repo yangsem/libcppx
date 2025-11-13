@@ -25,13 +25,13 @@ enum ErrorCode : int32_t {
  * @brief 获取当前线程的最后一次出错的错误码
  * @return 当前线程的最后一次出错的错误码
  */
-EXPORT ErrorCode GetLastError() noexcept;
+EXPORT ErrorCode GetLastError();
 
 /**
  * @brief 设置当前线程的最后一次出错的错误码
  * @param eErrorCode 错误码
  */
-EXPORT void SetLastError(ErrorCode eErrorCode) noexcept;
+EXPORT void SetLastError(ErrorCode eErrorCode);
 
 }
 }

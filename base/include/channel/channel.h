@@ -44,7 +44,7 @@ template<ChannelType eChannelType, ElementType eElementType, LengthType eLengthT
 class IChannel
 {
 protected:
-    virtual ~IChannel() noexcept = default;
+    virtual ~IChannel() = default;
 
 public:
     /**
@@ -53,21 +53,21 @@ public:
      * @return 成功返回通道指针，失败返回nullptr
      * @note 多线程安全
      */
-    static IChannel *Create(const ChannelConfig *pConfig) noexcept;
+    static IChannel *Create(const ChannelConfig *pConfig);
 
     /**
      * @brief 销毁一个通道
      * @param pChannel 通道指针
      * @note 多线程安全
      */
-    static void Destroy(IChannel *pChannel) noexcept;
+    static void Destroy(IChannel *pChannel);
 
     /**
      * @brief 创建一个元素
      * @return 成功返回元素指针，失败返回nullptr
      * @note 多线程安全
      */
-    void *New() noexcept;
+    void *New();
 
     /**
      * @brief 创建一个元素
@@ -75,42 +75,42 @@ public:
      * @return 成功返回元素指针，失败返回nullptr
      * @note 多线程安全
      */
-    void *New(uint32_t uSize) noexcept;
+    void *New(uint32_t uSize);
 
     /**
      * @brief 发布一个元素
      * @param pData 元素指针
      * @note 多线程安全
      */
-    void Post(void *pData) noexcept;
+    void Post(void *pData);
 
     /**
      * @brief 获取一个元素
      * @return 成功返回元素指针，失败返回nullptr
      * @note 多线程安全
      */
-    void *Get() noexcept;
+    void *Get();
 
     /**
      * @brief 释放一个元素
      * @param pData 元素指针
      * @note 多线程安全
      */
-    void Delete(void *pData) noexcept;
+    void Delete(void *pData);
 
     /**
      * @brief 判断通道是否为空
      * @return 为空返回true，否则返回false
      * @note 多线程安全
      */
-    bool IsEmpty() const noexcept;
+    bool IsEmpty() const;
 
     /**
      * @brief 获取通道当前元素个数
      * @return 通道当前元素个数
      * @note 多线程安全
      */
-    uint32_t GetSize() const noexcept;
+    uint32_t GetSize() const;
 
     /**
      * @brief 获取通道统计信息
@@ -118,7 +118,7 @@ public:
      * @return 成功返回0，失败返回错误码
      * @note 多线程安全
      */
-    int32_t GetStats(IJson *pStats) const noexcept;
+    int32_t GetStats(IJson *pStats) const;
 };
 
 using SPSCFixedBoundedChannel = IChannel<ChannelType::kSPSC, ElementType::kFixedSize, LengthType::kBounded>;

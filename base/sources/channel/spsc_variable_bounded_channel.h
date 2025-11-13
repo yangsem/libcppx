@@ -14,31 +14,31 @@ namespace channel
 class CSPSCVariableBoundedChannel
 {
 public:
-    CSPSCVariableBoundedChannel() noexcept = default;
+    CSPSCVariableBoundedChannel() = default;
     CSPSCVariableBoundedChannel(const CSPSCVariableBoundedChannel &) = delete;
     CSPSCVariableBoundedChannel &operator=(const CSPSCVariableBoundedChannel &) = delete;
     CSPSCVariableBoundedChannel(CSPSCVariableBoundedChannel &&) = delete;
     CSPSCVariableBoundedChannel &operator=(CSPSCVariableBoundedChannel &&) = delete;
 
-    ~CSPSCVariableBoundedChannel() noexcept;
+    ~CSPSCVariableBoundedChannel();
 
-    int32_t Init(uint64_t uMaxMemorySizeKB) noexcept;
+    int32_t Init(uint64_t uMaxMemorySizeKB);
 
-    Entry *New() noexcept;
-    Entry *New(uint32_t uSize) noexcept;
-    void Post(Entry *pEntry) noexcept;
+    Entry *New();
+    Entry *New(uint32_t uSize);
+    void Post(Entry *pEntry);
 
-    Entry *Get() noexcept;
-    void Delete(Entry *pEntry) noexcept;
+    Entry *Get();
+    void Delete(Entry *pEntry);
 
-    bool IsEmpty() const noexcept;
-    uint32_t GetSize() const noexcept;
+    bool IsEmpty() const;
+    uint32_t GetSize() const;
 
-    int32_t GetStats(IJson *pStats) const noexcept;
+    int32_t GetStats(IJson *pStats) const;
 
 private:
-    void *NewEntry(uint32_t uNewSize) noexcept;
-    void *GetEntry() noexcept;
+    void *NewEntry(uint32_t uNewSize);
+    void *GetEntry();
 
 private:
     ALIGN_AS_CACHELINE uint8_t *m_pDatap{nullptr};

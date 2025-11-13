@@ -28,7 +28,7 @@ public:
     using ThreadFunc = bool (*) (void *);
 
 protected:
-    virtual ~IThread() noexcept = default;
+    virtual ~IThread() = default;
 
 public:
     /**
@@ -40,7 +40,7 @@ public:
      * 
      * @note 多线程安全
      */
-    static IThread *Create(const char *pThreadName, ThreadFunc pThreadFunc, void *pThreadArg) noexcept;
+    static IThread *Create(const char *pThreadName, ThreadFunc pThreadFunc, void *pThreadArg);
 
     /**
      * @brief 销毁一个线程
@@ -48,7 +48,7 @@ public:
      * 
      * @note 多线程安全
      */
-    static void Destroy(IThread *pThread) noexcept;
+    static void Destroy(IThread *pThread);
 
     /**
      * @brief 绑定线程
@@ -59,7 +59,7 @@ public:
      * 
      * @note 多线程不安全
      */
-    virtual int32_t Bind(const char *pThreadName, ThreadFunc pThreadFunc, void *pThreadArg) noexcept = 0;
+    virtual int32_t Bind(const char *pThreadName, ThreadFunc pThreadFunc, void *pThreadArg) = 0;
 
     /**
      * @brief 绑定CPU
@@ -68,7 +68,7 @@ public:
      * 
      * @note 多线程不安全
      */
-    virtual int32_t BindCpu(int32_t iCpuNo) noexcept = 0;
+    virtual int32_t BindCpu(int32_t iCpuNo) = 0;
 
     /**
      * @brief 绑定节点
@@ -77,7 +77,7 @@ public:
      * 
      * @note 多线程不安全
      */
-    virtual int32_t BindNode(int32_t iNodeNo) noexcept = 0;
+    virtual int32_t BindNode(int32_t iNodeNo) = 0;
 
     /**
      * @brief 启动线程
@@ -85,28 +85,28 @@ public:
      * 
      * @note 多线程不安全
      */
-    virtual int32_t Start() noexcept = 0;
+    virtual int32_t Start() = 0;
 
     /**
      * @brief 停止线程
      * 
      * @note 多线程不安全
      */
-    virtual void Stop() noexcept = 0;
+    virtual void Stop() = 0;
 
     /**
      * @brief 暂停线程并同步等待线程暂停完成
      * 
      * @note 多线程不安全
      */
-    virtual int32_t Pause() noexcept = 0;
+    virtual int32_t Pause() = 0;
 
     /**
      * @brief 恢复线程，不等待线程恢复
      * 
      * @note 多线程不安全
      */
-    virtual int32_t Resume() noexcept = 0;
+    virtual int32_t Resume() = 0;
 
     /**
      * @brief 获取线程状态
@@ -114,7 +114,7 @@ public:
      * 
      * @note 多线程安全，但可能不准确
      */
-    virtual ThreadState GetThreadState() const noexcept = 0;
+    virtual ThreadState GetThreadState() const = 0;
 
     /**
      * @brief 获取线程ID
@@ -122,7 +122,7 @@ public:
      * 
      * @note 多线程安全
      */
-    virtual int32_t GetThreadId() const noexcept = 0;
+    virtual int32_t GetThreadId() const = 0;
 
     /**
      * @brief 获取最后一次运行线程函数的时间
@@ -130,7 +130,7 @@ public:
      * 
      * @note 多线程安全，可以用于检测线程是否卡死
      */
-    virtual uint64_t GetLastRunTimeNs() const noexcept = 0;
+    virtual uint64_t GetLastRunTimeNs() const = 0;
 };
 
 }

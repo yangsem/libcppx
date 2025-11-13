@@ -10,7 +10,7 @@ namespace cppx
 namespace base
 {
 
-IAllocator *IAllocator::GetInstance() noexcept
+IAllocator *IAllocator::GetInstance()
 {
     static std::mutex s_mutex;
     static CAllocatorImpl *s_pAllocator = nullptr;
@@ -44,12 +44,12 @@ IAllocator *IAllocator::GetInstance() noexcept
     return s_pAllocator;
 }
 
-IAllocator *IAllocator::Create() noexcept
+IAllocator *IAllocator::Create()
 {
     return NEW CAllocatorImpl();
 }
 
-void IAllocator::Destroy(IAllocator *pAllocator) noexcept
+void IAllocator::Destroy(IAllocator *pAllocator)
 {
     if (pAllocator != nullptr)
     {
@@ -57,23 +57,23 @@ void IAllocator::Destroy(IAllocator *pAllocator) noexcept
     }
 }
 
-int32_t CAllocatorImpl::Init(const IJson *pConfig) noexcept
+int32_t CAllocatorImpl::Init(const IJson *pConfig)
 {
     // 允许pConfig为nullptr，使用默认配置
     (void)pConfig;
     return ErrorCode::kSuccess;
 }
 
-void CAllocatorImpl::Exit() noexcept
+void CAllocatorImpl::Exit()
 {
 }
 
-void *CAllocatorImpl::Malloc(uint64_t uSize) noexcept
+void *CAllocatorImpl::Malloc(uint64_t uSize)
 {
     return std::malloc(uSize);
 }
 
-void CAllocatorImpl::Free(const void *pMem) noexcept
+void CAllocatorImpl::Free(const void *pMem)
 {
     if (pMem != nullptr)
     {
@@ -81,7 +81,7 @@ void CAllocatorImpl::Free(const void *pMem) noexcept
     }
 }
 
-int32_t CAllocatorImpl::GetStats(IJson *pJson) const noexcept
+int32_t CAllocatorImpl::GetStats(IJson *pJson) const
 {
     if (pJson != nullptr)
     {

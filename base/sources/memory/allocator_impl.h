@@ -11,21 +11,21 @@ namespace base
 class CAllocatorImpl final : public IAllocator
 {
 public:
-    CAllocatorImpl() noexcept = default;
+    CAllocatorImpl() = default;
     CAllocatorImpl(const CAllocatorImpl &) = delete;
     CAllocatorImpl &operator=(const CAllocatorImpl &) = delete;
     CAllocatorImpl(CAllocatorImpl &&) = delete;
     CAllocatorImpl &operator=(CAllocatorImpl &&) = delete;
 
-    ~CAllocatorImpl() noexcept override = default;
+    ~CAllocatorImpl() override = default;
 
-    int32_t Init(const IJson *pConfig) noexcept override;
-    void Exit() noexcept override;
+    int32_t Init(const IJson *pConfig) override;
+    void Exit() override;
 
-    void *Malloc(uint64_t uSize) noexcept override;
-    void Free(const void *pMem) noexcept override;
+    void *Malloc(uint64_t uSize) override;
+    void Free(const void *pMem) override;
 
-    int32_t GetStats(IJson *pJson) const noexcept override;
+    int32_t GetStats(IJson *pJson) const override;
 
 private:
 
