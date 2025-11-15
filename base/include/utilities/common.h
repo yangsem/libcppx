@@ -56,6 +56,42 @@
 #define ALIGN8(num) ALIGNN(num, 7)
 #define ALIGN64(num) ALIGNN(num, 63)
 
+/**
+ * @brief 获取指针的最低位（用于指针标记）
+ * @param ptr 指针
+ * @return 最低位的值（0或1）
+ * @note 适用于32位和64位系统
+ */
+template<typename T>
+inline uintptr_t GetPointerLastBit(T *ptr)
+{
+    return reinterpret_cast<uintptr_t>(ptr) & uintptr_t(1);
+}
+
+/**
+ * @brief 清零指针的最低位
+ * @param ptr 指针
+ * @return 清零最低位后的指针
+ * @note 适用于32位和64位系统
+ */
+template<typename T>
+inline T *ClearPointerLastBit(T *ptr)
+{
+    return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(ptr) & ~uintptr_t(1));
+}
+
+/**
+ * @brief 设置指针的最低位为1
+ * @param ptr 指针
+ * @return 设置最低位后的指针
+ * @note 适用于32位和64位系统
+ */
+template<typename T>
+inline T *SetPointerLastBit(T *ptr)
+{
+    return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(ptr) | uintptr_t(1));
+}
+
 #define MAX_NAME_LEN 128
 #define MAX_FILE_LEN 256
 #define MAX_PATH_LEN 1024
