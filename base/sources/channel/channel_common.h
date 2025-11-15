@@ -1,8 +1,7 @@
-#ifndef __CPPX_CHANNEL_IMPL_H__
-#define __CPPX_CHANNEL_IMPL_H__
+#ifndef __CPPX_CHANNEL_COMMON_H__
+#define __CPPX_CHANNEL_COMMON_H__
 
 #include <channel/channel.h>
-#include <cstdint>
 
 namespace cppx
 {
@@ -103,4 +102,4 @@ template class EXPORT IChannel<ChannelType::kMPMC, ElementType::kVariableSize, L
 }
 }
 
-#endif // __CPPX_CHANNEL_IMPL_H__
+#endif // __CPPX_CHANNEL_COMMON_H__

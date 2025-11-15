@@ -1,5 +1,5 @@
-#ifndef __CPPX_SPSC_VARIABLE_BOUNDED_CHANNEL_H__
-#define __CPPX_SPSC_VARIABLE_BOUNDED_CHANNEL_H__
+#ifndef __CPPX_MPSC_VARIABLE_BOUNDED_CHANNEL_H__
+#define __CPPX_MPSC_VARIABLE_BOUNDED_CHANNEL_H__
 
 #include "channel_common.h"
 
@@ -10,16 +10,16 @@ namespace base
 namespace channel
 {
 
-class CSPSCVariableBoundedChannel
+class CMPSCVariableBoundedChannel
 {
 public:
-    CSPSCVariableBoundedChannel() = default;
-    CSPSCVariableBoundedChannel(const CSPSCVariableBoundedChannel &) = delete;
-    CSPSCVariableBoundedChannel &operator=(const CSPSCVariableBoundedChannel &) = delete;
-    CSPSCVariableBoundedChannel(CSPSCVariableBoundedChannel &&) = delete;
-    CSPSCVariableBoundedChannel &operator=(CSPSCVariableBoundedChannel &&) = delete;
+    CMPSCVariableBoundedChannel() = default;
+    CMPSCVariableBoundedChannel(const CMPSCVariableBoundedChannel &) = delete;
+    CMPSCVariableBoundedChannel &operator=(const CMPSCVariableBoundedChannel &) = delete;
+    CMPSCVariableBoundedChannel(CMPSCVariableBoundedChannel &&) = delete;
+    CMPSCVariableBoundedChannel &operator=(CMPSCVariableBoundedChannel &&) = delete;
 
-    ~CSPSCVariableBoundedChannel();
+    ~CMPSCVariableBoundedChannel();
 
     int32_t Init(uint64_t uMaxMemorySizeKB);
 
@@ -52,9 +52,8 @@ private:
     uint64_t m_uTailRef{0};
     ChannelStats m_Statsc;
 };
-
 }
 }
 }
 
-#endif // __CPPX_SPSC_VARIABLE_BOUNDED_CHANNEL_H__
+#endif // __CPPX_MPSC_VARIABLE_BOUNDED_CHANNEL_H__

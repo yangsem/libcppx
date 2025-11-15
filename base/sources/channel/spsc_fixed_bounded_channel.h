@@ -1,7 +1,7 @@
 #ifndef __CPPX_SPSC_FIXED_BOUNDED_CHANNEL_H__
 #define __CPPX_SPSC_FIXED_BOUNDED_CHANNEL_H__
 
-#include "channel_impl.h"
+#include "channel_common.h"
 
 namespace cppx
 {

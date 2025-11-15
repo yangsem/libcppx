@@ -1,5 +1,4 @@
 #include "spsc_variable_bounded_channel.h"
-#include "channel_impl.h"
 #include "utilities/common.h"
 #include <memory/allocator_ex.h>
 #include <utilities/error_code.h>
@@ -34,7 +33,6 @@ int32_t CSPSCVariableBoundedChannel::Init(uint64_t uMaxMemorySizeKB)
     auto pData = reinterpret_cast<uint8_t *>(IAllocator::GetInstance()->Malloc(m_uSizep));
     if (pData == nullptr)
     {
-        SetLastError(ErrorCode::kOutOfMemory);
         return ErrorCode::kOutOfMemory;
     }
 
