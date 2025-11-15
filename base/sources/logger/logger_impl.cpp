@@ -15,6 +15,8 @@ namespace cppx
 {
 namespace base
 {
+namespace logger
+{
 
 thread_local uint32_t CLoggerImpl::m_uTid = UINT32_MAX;
 
@@ -46,7 +48,7 @@ static const char *LogLevelToString(ILogger::LogLevel eLevel)
 
 ILogger *ILogger::Create(IJson *pConfig)
 {
-    auto pLogger = IAllocatorEx::GetInstance()->New<CLoggerImpl>();
+    auto pLogger = memory::IAllocatorEx::GetInstance()->New<CLoggerImpl>();
     if (pLogger == nullptr)
     {
         PRINT_ERROR("new logger failed, out of memory %s", "");
@@ -58,7 +60,7 @@ ILogger *ILogger::Create(IJson *pConfig)
     if (iErrorNo != ErrorCode::kSuccess)
     {
         PRINT_ERROR("init logger failed, error code: %d", iErrorNo);
-        IAllocatorEx::GetInstance()->Delete(pLogger);
+        memory::IAllocatorEx::GetInstance()->Delete(pLogger);
         SetLastError((ErrorCode)iErrorNo);
         return nullptr;
     }
@@ -70,7 +72,7 @@ void ILogger::Destroy(ILogger *pLogger)
 {
     if (pLogger != nullptr)
     {
-        IAllocatorEx::GetInstance()->Delete(dynamic_cast<CLoggerImpl *>(pLogger));
+        memory::IAllocatorEx::GetInstance()->Delete(dynamic_cast<CLoggerImpl *>(pLogger));
     }
 }
 
@@ -101,7 +103,7 @@ int32_t CLoggerImpl::Init(IJson *pConfig)
     m_uLogTotalSizeMB = pConfig->GetUint64(config::kLogTotalSizeMB, default_value::kLogTotalSizeMB);
     m_uLogFormatBufferSize = pConfig->GetUint32(config::kLogFormatBufferSize, default_value::kLogFormatBufferSize);
     m_uLogChannelMaxMemMB = pConfig->GetUint32(config::kLogChannelMaxMemMB, default_value::kLogChannelMaxMemMB);
-    m_pAllocator = IAllocator::GetInstance();
+    m_pAllocator = memory::IAllocator::GetInstance();
 
     try
     {
@@ -238,7 +240,7 @@ void CLoggerImpl::Stop()
     }
 }
 
-void CLoggerImpl::LogItem::CopyParams(IAllocator *pAllocator, const char **ppParams, uint32_t uParamCount)
+void CLoggerImpl::LogItem::CopyParams(memory::IAllocator *pAllocator, const char **ppParams, uint32_t uParamCount)
 {
     this->ppParams = nullptr;
     this->uParamCount = 0;
@@ -658,5 +660,6 @@ void CLoggerImpl::CheckFileSwitch()
     }
 }
 
+}
 }
 }

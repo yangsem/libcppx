@@ -9,6 +9,8 @@ namespace cppx
 {
 namespace base
 {
+namespace memory
+{
 
 class IAllocatorEx : public IAllocator
 {
@@ -61,6 +63,7 @@ public:
     }
 };
 
+}
 }
 }
 #endif // __CPPX_ALLOCATOR_EX_H__

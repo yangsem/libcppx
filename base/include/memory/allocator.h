@@ -8,6 +8,8 @@ namespace cppx
 {
 namespace base
 {
+namespace memory
+{
 
 class EXPORT IAllocator
 {
@@ -87,5 +89,5 @@ constexpr const uint64_t kAllocatorMaxMemoryMB = 0; // 最大内存大小(MB)，
 
 }
 }
-
+}
 #endif // __CPPX_ALLOCATOR_H__

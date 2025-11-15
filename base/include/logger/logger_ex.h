@@ -11,6 +11,8 @@ namespace cppx
 {
 namespace base
 {
+namespace logger
+{
 
 namespace wrap_detail
 {
@@ -93,33 +95,34 @@ using WrapB = Wrap<8, bool>;
 // 自动类型推断宏：根据参数类型自动选择对应的Wrap实现
 // 使用方式：Wrap(a) 会自动推断类型并返回对应的Wrap实例
 #define Wrap(val)                                                              \
-  (::lite_drive::logger::Wrap<                                                 \
-      ::lite_drive::logger::wrap_detail::SizeHelper<                           \
+  (::cppx::base::logger::Wrap<                                                 \
+      ::cppx::base::logger::wrap_detail::SizeHelper<                           \
           typename std::decay<decltype(val)>::type>::value,                    \
       typename std::decay<decltype(val)>::type>(val))
 
 /* ============================== 日志宏 ============================== */
 #define LOG_BASE(pLogger, eLevel, iErrorNo, fmt, ...)                          \
   {                                                                            \
-    if (likely(eLevel > cppx::base::ILogger::LogLevel::kInfo &&                \
-               eLevel < cppx::base::ILogger::LogLevel::kEvent)) {              \
+    if (likely(eLevel > cppx::base::logger::ILogger::LogLevel::kInfo &&        \
+               eLevel < cppx::base::logger::ILogger::LogLevel::kEvent)) {      \
       ::cppx::base::SetLastError(iErrorNo);                                    \
     }                                                                          \
     if (likely(pLogger != nullptr && eLevel >= pLogger->GetLogLevel())) {      \
       const char *pParams[] = {"", ##__VA_ARGS__};                             \
-      pLogger->Log(iErrorNo, eLevel, kModuleName, _POSITION_STRING, fmt,       \
+      pLogger->Log(iErrorNo, eLevel, kModuleName, __POSITION__, fmt,       \
                    &pParams[1], sizeof(pParams) / sizeof(pParams[0]) - 1);     \
     }                                                                          \
   }
 
-#define LOG_TRACE(_logger, iErrorNo, fmt, ...) LOG_BASE(pLogger, logger::LogLevel::kTrace, iErrorNo, fmt, ##__VA_ARGS__) // 跟踪
-#define LOG_DEBUG(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, logger::LogLevel::kDebug, iErrorNo, fmt, ##__VA_ARGS__) // 调试
-#define LOG_INFO(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, logger::LogLevel::kInfo, iErrorNo, fmt, ##__VA_ARGS__)   // 信息
-#define LOG_WARN(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, logger::LogLevel::kWarn, iErrorNo, fmt, ##__VA_ARGS__)   // 警告
-#define LOG_ERROR(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, logger::LogLevel::kError, iErrorNo, fmt, ##__VA_ARGS__) // 错误
-#define LOG_FATAL(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, logger::LogLevel::kFatal, iErrorNo, fmt, ##__VA_ARGS__) // 致命
-#define LOG_EVENT(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, logger::LogLevel::kEvent, iErrorNo, fmt, ##__VA_ARGS__) // 事件
+#define LOG_TRACE(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, cppx::base::logger::ILogger::LogLevel::kTrace, iErrorNo, fmt, ##__VA_ARGS__) // 跟踪
+#define LOG_DEBUG(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, cppx::base::logger::ILogger::LogLevel::kDebug, iErrorNo, fmt, ##__VA_ARGS__) // 调试
+#define LOG_INFO(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, cppx::base::logger::ILogger::LogLevel::kInfo, iErrorNo, fmt, ##__VA_ARGS__)   // 信息
+#define LOG_WARN(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, cppx::base::logger::ILogger::LogLevel::kWarn, iErrorNo, fmt, ##__VA_ARGS__)   // 警告
+#define LOG_ERROR(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, cppx::base::logger::ILogger::LogLevel::kError, iErrorNo, fmt, ##__VA_ARGS__) // 错误
+#define LOG_FATAL(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, cppx::base::logger::ILogger::LogLevel::kFatal, iErrorNo, fmt, ##__VA_ARGS__) // 致命
+#define LOG_EVENT(pLogger, iErrorNo, fmt, ...) LOG_BASE(pLogger, cppx::base::logger::ILogger::LogLevel::kEvent, iErrorNo, fmt, ##__VA_ARGS__) // 事件
 
+}
 }
 }
 #endif // __CPPX_LOGGER_EX_H__

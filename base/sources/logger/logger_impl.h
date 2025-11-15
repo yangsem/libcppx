@@ -13,6 +13,8 @@ namespace cppx
 {
 namespace base
 {
+namespace logger
+{
 
 class CLoggerImpl final : public ILogger
 {
@@ -50,7 +52,7 @@ public:
         const char *pFormat;
         char **ppParams;
 
-        void CopyParams(IAllocator *pAllocator, const char **ppParams, uint32_t uParamCount);
+        void CopyParams(memory::IAllocator *pAllocator, const char **ppParams, uint32_t uParamCount);
     };
 
 public:
@@ -90,7 +92,7 @@ private:
     bool m_bAsync {false};
     uint32_t m_uPid {UINT32_MAX};
     static thread_local uint32_t m_uTid;
-    IAllocator *m_pAllocator {nullptr};
+    memory::IAllocator *m_pAllocator {nullptr};
     uint32_t m_uLogFormatBufferSize {default_value::kLogFormatBufferSize};
 
     std::mutex m_lock;
@@ -120,6 +122,7 @@ private:
 
 };
 
+}
 }
 }
 #endif // __CPPX_LOGGER_IMPL_H__

@@ -9,6 +9,8 @@ namespace cppx
 {
 namespace base
 {
+namespace logger
+{
 
 class EXPORT ILogger
 {
@@ -154,6 +156,7 @@ constexpr const uint32_t kLogFormatBufferSize = 4096; // 日志格式化缓冲�
 constexpr const uint32_t kLogChannelMaxMemMB = 128; // 日志通道最大内存大小(MB), 默认: 128MB
 }
 
+}
 }
 }
 
