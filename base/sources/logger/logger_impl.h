@@ -5,6 +5,7 @@
 #include <thread/thread_manager.h>
 #include <channel/channel.h>
 #include <memory/allocator_ex.h>
+#include <thread/spin_lock.h>
 #include <condition_variable>
 #include <string>
 
@@ -15,7 +16,7 @@ namespace base
 
 class CLoggerImpl final : public ILogger
 {
-    using LogChannel = channel::MPSCVariableBoundedChannel;
+    using LogChannel = channel::SPSCVariableBoundedChannel;
 public:
     enum class LogItemType : uint8_t
     {
@@ -95,6 +96,7 @@ private:
     std::mutex m_lock;
     std::condition_variable m_condition;
     LogChannel *m_pChannel {nullptr};
+    SpinLock *m_pSpinLock {nullptr};
     uint32_t m_uLogChannelMaxMemMB {default_value::kLogChannelMaxMemMB};
 
     bool m_bRunning {false};

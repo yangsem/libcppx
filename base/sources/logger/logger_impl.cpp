@@ -1,4 +1,5 @@
 #include "logger_impl.h"
+#include "thread/spin_lock.h"
 #include <algorithm>
 #include <cstring>
 #include <filesystem> // use c++17 feature
@@ -119,11 +120,19 @@ int32_t CLoggerImpl::Init(IJson *pConfig)
     if (m_bAsync)
     {
         channel::ChannelConfig stConfig;
-        stConfig.uTotalMemorySizeMB = m_uLogChannelMaxMemMB;
+        stConfig.uElementSize = sizeof(void *);
         m_pChannel = LogChannel::Create(&stConfig);
         if (m_pChannel == nullptr)
         {
             PRINT_ERROR("init logger failed, create channel failed %s", "");
+            SetLastError(ErrorCode::kSystemError);
+            return ErrorCode::kSystemError;
+        }
+
+        m_pSpinLock = SpinLock::Create();
+        if (m_pSpinLock == nullptr)
+        {
+            PRINT_ERROR("init logger failed, create spin lock failed %s", "");
             SetLastError(ErrorCode::kSystemError);
             return ErrorCode::kSystemError;
         }
@@ -167,18 +176,24 @@ void CLoggerImpl::Exit()
 
     if (m_bAsync)
     {
+        if (m_pChannel != nullptr)
+        {
+            LogChannel::Destroy(m_pChannel);
+            m_pChannel = nullptr;
+        }
+    
+        if (m_pSpinLock != nullptr)
+        {
+            SpinLock::Destroy(m_pSpinLock);
+            m_pSpinLock = nullptr;
+        }
+
         if (m_pThreadManager != nullptr && m_pThread != nullptr)
         {
             m_pThreadManager->DestroyThread(m_pThread);
             m_pThread = nullptr;
         }
         m_pThreadManager = nullptr;
-    }
-
-    if (m_pChannel != nullptr)
-    {
-        LogChannel::Destroy(m_pChannel);
-        m_pChannel = nullptr;
     }
 
     if (m_pLogFile != nullptr)
@@ -263,7 +278,7 @@ int32_t CLoggerImpl::Log(int32_t iErrorNo, LogLevel eLevel, const char *pModule,
     }
     if (likely(m_bAsync))
     {
-        auto pLogItem = reinterpret_cast<LogItem *>(m_pChannel->New(sizeof(LogItem)));
+        auto pLogItem = reinterpret_cast<LogItem *>(m_pAllocator->Malloc(sizeof(LogItem)));
         if (unlikely(pLogItem == nullptr))
         {
             SetLastError(ErrorCode::kOutOfMemory);
@@ -280,10 +295,24 @@ int32_t CLoggerImpl::Log(int32_t iErrorNo, LogLevel eLevel, const char *pModule,
         pLogItem->pFunction = pFunction;
         pLogItem->pFormat = pFormat;
         pLogItem->CopyParams(m_pAllocator, ppParams, uParamCount);
-        m_pChannel->Post(pLogItem);
-        if (m_pChannel->GetSize() == 1)
         {
-            m_condition.notify_one();
+            SpinLockGuard guard(m_pSpinLock);
+            auto ppLogItem = reinterpret_cast<LogItem **>(m_pChannel->New());
+            if (likely(ppLogItem != nullptr))
+            {
+                *ppLogItem = pLogItem;
+                m_pChannel->Post(ppLogItem);
+                if (m_pChannel->GetSize() == 1)
+                {
+                    m_condition.notify_one();
+                }
+            }
+            else
+            {
+                m_pAllocator->Free(pLogItem);
+                SetLastError(ErrorCode::kOutOfMemory);
+                return ErrorCode::kOutOfMemory;
+            }
         }
         return ErrorCode::kSuccess;
     }
@@ -312,13 +341,14 @@ int32_t CLoggerImpl::LogFormat(int32_t iErrorNo, LogLevel eLevel, const char *pF
         m_uTid = gettid();
     }
 
-    auto pLogBuffer = (char *)m_pAllocator->Malloc(m_uLogFormatBufferSize);
-    if (unlikely(pLogBuffer == nullptr))
+    auto pLogForamtItem = reinterpret_cast<LogForamtItem *>(sizeof(LogForamtItem) + m_uLogFormatBufferSize);
+    if (unlikely(pLogForamtItem == nullptr))
     {
         SetLastError(ErrorCode::kOutOfMemory);
         return ErrorCode::kOutOfMemory;
     }
-
+    
+    auto pLogBuffer = reinterpret_cast<char *>(pLogForamtItem + 1);
     auto time = ITime::GetLocalTime();
     // YYYYMMDD-HHMMSS.uuuuuu PID TID ERROR_CODE LEVEL 
     auto iLen = snprintf((char *)pLogBuffer, m_uLogFormatBufferSize, 
@@ -350,20 +380,27 @@ int32_t CLoggerImpl::LogFormat(int32_t iErrorNo, LogLevel eLevel, const char *pF
 
     if (likely(m_bAsync))
     {
-        auto pLogForamtItem = reinterpret_cast<LogForamtItem *>(m_pChannel->New(sizeof(LogForamtItem)));
-        if (unlikely(pLogForamtItem == nullptr))
-        {
-            m_pAllocator->Free(pLogBuffer);
-            SetLastError(ErrorCode::kOutOfMemory);
-            return ErrorCode::kOutOfMemory;
-        }
         pLogForamtItem->header.eType = LogItemType::kLogFormat;
         pLogForamtItem->uWriteLen = uWriteLen;
         pLogForamtItem->pLogBuffer = pLogBuffer;
-        m_pChannel->Post(pLogForamtItem);
-        if (m_pChannel->GetSize() == 1)
         {
-            m_condition.notify_one();
+            SpinLockGuard guard(m_pSpinLock);
+            auto ppLogForamtItem = reinterpret_cast<LogForamtItem **>(m_pChannel->New());
+            if (likely(ppLogForamtItem != nullptr))
+            {
+                *ppLogForamtItem = pLogForamtItem;
+                m_pChannel->Post(ppLogForamtItem);
+                if (m_pChannel->GetSize() == 1)
+                {
+                    m_condition.notify_one();
+                }
+            }
+            else
+            {
+                m_pAllocator->Free(pLogForamtItem);
+                SetLastError(ErrorCode::kOutOfMemory);
+                return ErrorCode::kOutOfMemory;
+            }
         }
         return ErrorCode::kSuccess;
     }
@@ -418,6 +455,7 @@ void CLoggerImpl::Run()
             WriteLog(pLogForamtItem->pLogBuffer, pLogForamtItem->uWriteLen);
             m_pAllocator->Free(pLogForamtItem->pLogBuffer);
         }
+        m_pAllocator->Free(pHeader);
         m_pChannel->Delete(pHeader);
     }
 
