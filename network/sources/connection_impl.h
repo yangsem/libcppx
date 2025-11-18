@@ -6,9 +6,11 @@
 #include <cstdint>
 #include <engine.h>
 #include <string>
+#include <memory/allocator_ex.h>
+#include <channel/channel.h>
+#include <thread/spin_lock.h>
 #include "message_pool.h"
-#include "task_queue.h"
-#include "memory/allocator_ex.h"
+#include "dispatcher.h"
 
 namespace cppx
 {
@@ -20,16 +22,18 @@ class CConnectionImpl final : public IConnection
     friend class CAcceptorImpl;
 public:
     CConnectionImpl() = default;
-    CConnectionImpl(uint64_t uID, ICallback *pCallback, CTaskQueue *pTaskQueue, 
+    CConnectionImpl(uint64_t uID, ICallback *pCallback, IDispatcher *pDispatcher, 
                     NetworkLogger *pLogger, base::memory::IAllocatorEx *pAllocatorEx);
     ~CConnectionImpl() override;
 
     int32_t Init(NetworkConfig *pConfig);
 
+    int32_t InitChannel();
+
     void SetID(uint64_t uID) { m_uID = uID; }
     void SetIOThreadIndex(uint32_t uIOThreadIndex) { m_uIOThreadIndex = uIOThreadIndex; }
 
-    int32_t Connect(const char *pRemoteIP, uint16_t uRemotePort) override;
+    int32_t Connect(const char *pRemoteIP, uint16_t uRemotePort, uint32_t uTimeoutMs = 0) override;
     void Close() override;
 
     IMessage *NewMessage(uint32_t uLength) override { return m_pMessagePool->NewMessage(uLength); }
@@ -37,11 +41,11 @@ public:
 
     int32_t Send(IMessage *pMessage, bool bPriority = false) override;
     int32_t Send(const uint8_t *pData, uint32_t uLength, bool bPriority = false) override;
-    int32_t Recv(IMessage *pMessage) override;
-    int32_t Recv(void *pData, uint32_t uLength) override;
+    int32_t Recv(IMessage **ppMessage, uint32_t uTimeoutMs = 0) override;
+    int32_t Recv(void *pData, uint32_t uLength, uint32_t uTimeoutMs = 0) override;
 
-    int32_t Call(IMessage *pRequest, IMessage *pResponse) override;
-    int32_t Call(const uint8_t *pRequest, uint32_t uRequestLength, IMessage *pResponse) override;
+    int32_t Call(IMessage *pRequest, IMessage *pResponse, uint32_t uTimeoutMs = 0) override;
+    int32_t Call(const uint8_t *pRequest, uint32_t uRequestLength, IMessage *pResponse, uint32_t uTimeoutMs = 0) override;
 
     bool IsConnected() const override { return m_iFd != -1; }
     uint64_t GetID() const override { return m_uID; }
@@ -54,6 +58,9 @@ public:
     int32_t GetFd() const { return m_iFd; }
 
 private:
+    inline int32_t SendData(const uint8_t *pData, uint32_t uLength);
+
+private:
     uint64_t m_uID{0};
     int32_t m_iFd{-1};
     uint32_t m_uIOThreadIndex{0};
@@ -62,10 +69,15 @@ private:
     uint64_t m_ulastRecvTimeNs{0};
 
     bool m_bIsASyncSend{false};
-    // queue for async send
+    base::SpinLock *m_pSpinLockSend{nullptr};
+    base::channel::SPSCFixedBoundedChannel *m_pChannelSend{nullptr};
+    base::channel::SPSCFixedBoundedChannel *m_pChannelPrioritySend{nullptr};
 
+    base::SpinLock *m_pSpinLockRecv{nullptr};
+    IMessage **m_ppMessageRecv{nullptr};
+    base::channel::SPSCFixedBoundedChannel *m_pChannelRecv{nullptr};
 
-    CTaskQueue *m_pTaskQueue{nullptr};
+    IDispatcher *m_pDispatcher{nullptr};
     base::memory::IAllocatorEx *m_pAllocatorEx{nullptr};
     NetworkLogger *m_pLogger{nullptr};
 
@@ -77,7 +89,8 @@ private:
     uint16_t m_uRemotePort{0};
     uint16_t m_uLocalPort{0};
 
-    uint32_t m_uSocketBufferSize{0};
+    uint32_t m_uSocketSendBufferSize{0};
+    uint32_t m_uSocketRecvBufferSize{0};
     uint32_t m_uHeartbeatIntervalMs{0};
     uint32_t m_uHeartbeatTimeoutMs{0};
 };

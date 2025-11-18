@@ -7,15 +7,16 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <memory>
 
 namespace cppx
 {
 namespace network
 {
 
-CAcceptorImpl::CAcceptorImpl(uint64_t uID, ICallback *pCallback, CTaskQueue *pTaskQueue,
+CAcceptorImpl::CAcceptorImpl(uint64_t uID, ICallback *pCallback, IDispatcher *pDispatcher,
                              NetworkLogger *pLogger, base::memory::IAllocatorEx *pAllocatorEx)
-    : m_uID(uID), m_pCallback(pCallback), m_pTaskQueue(pTaskQueue)
+    : m_uID(uID), m_pCallback(pCallback), m_pDispatcher(pDispatcher)
     , m_pAllocatorEx(pAllocatorEx), m_pLogger(pLogger)
 {
 }
@@ -55,7 +56,8 @@ int32_t CAcceptorImpl::Init(NetworkConfig *pConfig)
         m_strAcceptorName = pConfig->GetString(config::kAcceptorName, default_value::kAcceptorName);
         m_strAcceptorIP = pConfig->GetString(config::kAcceptorIP, default_value::kAcceptorIP);
         m_uAcceptorPort = pConfig->GetUint32(config::kAcceptorPort, default_value::kAcceptorPort);
-        m_uSocketBufferSize = pConfig->GetUint32(config::kSocketBufferBytes, default_value::kSocketBufferBytes);
+        m_uSocketSendBufferSize = pConfig->GetUint32(config::kSocketSendBufferBytes, default_value::kSocketSendBufferBytes);
+        m_uSocketRecvBufferSize = pConfig->GetUint32(config::kSocketRecvBufferBytes, default_value::kSocketRecvBufferBytes);
         m_uHeartbeatIntervalMs = pConfig->GetUint32(config::kHeartbeatIntervalMs, default_value::kHeartbeatIntervalMs);
         m_uHeartbeatTimeoutMs = pConfig->GetUint32(config::kHeartbeatTimeoutMs, default_value::kHeartbeatTimeoutMs);
     }
@@ -100,7 +102,7 @@ int32_t CAcceptorImpl::Start()
     task.eTaskType = TaskType::kAddAcceptor;
     task.funcCallback = nullptr;
     task.iFd = m_iFd;
-    if (m_pTaskQueue->PostTask(task) != 0)
+    if (m_pDispatcher->Post(task) != 0)
     {
         LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", m_strAcceptorName.c_str());
         return ErrorCode::kSystemError;
@@ -124,17 +126,17 @@ void CAcceptorImpl::Stop()
     task.eTaskType = TaskType::kRemoveAcceptor;
     task.funcCallback = [&] (bool bResult) {  bTaskResult = bResult; bTaskDone = true; };
     task.iFd = m_iFd;
-    if (m_pTaskQueue->PostTask(task) != 0)
+    if (m_pDispatcher->Post(task) != 0)
     {
         LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", m_strAcceptorName.c_str());
     }
 
-    while (m_pTaskQueue->IsRunning() && !bTaskDone)
+    while (m_pDispatcher->IsRunning() && !bTaskDone)
     {
         usleep(1000); // 1ms
     }
 
-    if (!m_pTaskQueue->IsRunning())
+    if (!m_pDispatcher->IsRunning())
     {
         LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} is not running", m_strAcceptorName.c_str());
         return;
@@ -185,7 +187,7 @@ CConnectionImpl *CAcceptorImpl::Accept()
         upConnection->m_bIsASyncSend = m_bIsASyncSend;
 
         upConnection->m_pAllocatorEx = m_pAllocatorEx;
-        upConnection->m_pTaskQueue = m_pTaskQueue;
+        upConnection->m_pDispatcher = m_pDispatcher;
         upConnection->m_pLogger = m_pLogger;
 
         upConnection->m_strRemoteIP = pRemoteIp;
@@ -193,9 +195,16 @@ CConnectionImpl *CAcceptorImpl::Accept()
         upConnection->m_strLocalIP = m_strAcceptorIP;
         upConnection->m_uLocalPort = m_uAcceptorPort;
 
-        upConnection->m_uSocketBufferSize = m_uSocketBufferSize;
+        upConnection->m_uSocketSendBufferSize = m_uSocketSendBufferSize;
+        upConnection->m_uSocketRecvBufferSize = m_uSocketRecvBufferSize;
         upConnection->m_uHeartbeatIntervalMs = m_uHeartbeatIntervalMs;
         upConnection->m_uHeartbeatTimeoutMs = m_uHeartbeatTimeoutMs;
+
+        if (upConnection->InitChannel() != ErrorCode::kSuccess)
+        {
+            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to init channel", m_strAcceptorName.c_str());
+            return nullptr;
+        }
     }
     catch(std::exception& e)
     {
@@ -204,25 +213,25 @@ CConnectionImpl *CAcceptorImpl::Accept()
         return nullptr;
     }
 
-    if (m_uSocketBufferSize != 0)
+    if (m_uSocketSendBufferSize != 0)
     {
-        if (setsockopt(iFd, SOL_SOCKET, SO_RCVBUF, &m_uSocketBufferSize, sizeof(m_uSocketBufferSize)) == -1)
+        if (setsockopt(iFd, SOL_SOCKET, SO_SNDBUF, &m_uSocketSendBufferSize, sizeof(m_uSocketSendBufferSize)) == -1)
         {
             LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to set {}:{} socket buffer {}", 
                 m_strAcceptorName.c_str(), pRemoteIp, Wrap(uRemotePort), strerror(errno));
             return nullptr;
         }
         LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} set {}:{} socket buffer size to {}", 
-            m_strAcceptorName.c_str(), pRemoteIp, Wrap(uRemotePort), Wrap(m_uSocketBufferSize));
+            m_strAcceptorName.c_str(), pRemoteIp, Wrap(uRemotePort), Wrap(m_uSocketSendBufferSize));
 
-        if (setsockopt(iFd, SOL_SOCKET, SO_SNDBUF, &m_uSocketBufferSize, sizeof(m_uSocketBufferSize)) == -1)
+        if (setsockopt(iFd, SOL_SOCKET, SO_RCVBUF, &m_uSocketRecvBufferSize, sizeof(m_uSocketRecvBufferSize)) == -1)
         {
             LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to set {}:{} socket buffer {}", 
                 m_strAcceptorName.c_str(), pRemoteIp, Wrap(uRemotePort), strerror(errno));
             return nullptr;
         }
         LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} set {}:{} socket buffer size to {}", 
-            m_strAcceptorName.c_str(), pRemoteIp, Wrap(uRemotePort), Wrap(m_uSocketBufferSize));
+            m_strAcceptorName.c_str(), pRemoteIp, Wrap(uRemotePort), Wrap(m_uSocketRecvBufferSize));
     }
 
     if (m_pCallback->OnAccept(upConnection.get()) != ErrorCode::kSuccess)

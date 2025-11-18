@@ -8,7 +8,7 @@
 #include <netinet/in.h>
 #include "connection_impl.h"
 #include "memory/allocator_ex.h"
-#include "task_queue.h"
+#include "dispatcher.h"
 
 namespace cppx
 {
@@ -17,7 +17,7 @@ namespace network
 
 class CAcceptorImpl final : public IAcceptor {
 public:
-    CAcceptorImpl(uint64_t uID, ICallback *pCallback, CTaskQueue *pTaskQueue,
+    CAcceptorImpl(uint64_t uID, ICallback *pCallback, IDispatcher *pDispatcher,
                   NetworkLogger *pLogger, base::memory::IAllocatorEx *pAllocator);
     ~CAcceptorImpl() override;
 
@@ -39,7 +39,7 @@ private:
     int32_t m_iFd{-1};
     uint64_t m_uID{0};
     ICallback *m_pCallback{nullptr};
-    CTaskQueue *m_pTaskQueue{nullptr};
+    IDispatcher *m_pDispatcher{nullptr};
     base::memory::IAllocatorEx *m_pAllocatorEx{nullptr};
     NetworkLogger *m_pLogger{nullptr};
     std::string m_strAcceptorName;
@@ -47,7 +47,8 @@ private:
     uint16_t m_uAcceptorPort{0};
 
     bool m_bIsASyncSend{false};
-    uint32_t m_uSocketBufferSize{0};
+    uint32_t m_uSocketSendBufferSize{0};
+    uint32_t m_uSocketRecvBufferSize{0};
     uint32_t m_uHeartbeatIntervalMs{0};
     uint32_t m_uHeartbeatTimeoutMs{0};
 };

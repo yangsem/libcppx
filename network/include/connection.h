@@ -51,42 +51,47 @@ public:
     /**
      * @brief 接收消息
      * @param pMessage 消息指针
+     * @param uTimeoutMs 超时时间，单位毫秒，0表示不超时
      * @return 0表示成功,否则失败
      */
-    virtual int32_t Recv(IMessage *pMessage) = 0;
+    virtual int32_t Recv(IMessage **ppMessage, uint32_t uTimeoutMs = 0) = 0;
 
     /**
      * @brief 接收消息
      * @param pData 接收消息数据指针
      * @param uLength 接收消息长度
+     * @param uTimeoutMs 超时时间，单位毫秒，0表示不超时
      * @return 0表示成功,否则失败
      */
-    virtual int32_t Recv(void *pData, uint32_t uLength) = 0;
+    virtual int32_t Recv(void *pData, uint32_t uLength, uint32_t uTimeoutMs = 0) = 0;
 
     /**
      * @brief 零拷贝同步调用
      * @param pRequest 请求消息指针
      * @param pResponse 响应消息指针
+     * @param uTimeoutMs 超时时间，单位毫秒，0表示不超时
      * @return 0表示成功,否则失败
      */
-    virtual int32_t Call(IMessage *pRequest, IMessage *pResponse) = 0;
+    virtual int32_t Call(IMessage *pRequest, IMessage *pResponse, uint32_t uTimeoutMs = 0) = 0;
 
     /**
      * @brief 非零拷贝同步调用
      * @param pRequest 请求消息数据
      * @param uRequestLength 请求消息长度
      * @param pResponse 响应消息指针
+     * @param uTimeoutMs 超时时间，单位毫秒，0表示不超时
      * @return 0表示成功,否则失败
      */
-    virtual int32_t Call(const uint8_t *pRequest, uint32_t uRequestLength, IMessage *pResponse) = 0;
+    virtual int32_t Call(const uint8_t *pRequest, uint32_t uRequestLength, IMessage *pResponse, uint32_t uTimeoutMs = 0) = 0;
 
     /**
      * @brief 连接远程服务器
      * @param pRemoteIP 远程服务器IP地址
      * @param uRemotePort 远程服务器端口
+     * @param uTimeoutMs 超时时间，单位毫秒，0表示不超时
      * @return 0表示成功,否则失败
      */
-    virtual int32_t Connect(const char *pRemoteIP, uint16_t uRemotePort) = 0;
+    virtual int32_t Connect(const char *pRemoteIP, uint16_t uRemotePort, uint32_t uTimeoutMs = 0) = 0;
 
     /**
      * @brief 关闭连接

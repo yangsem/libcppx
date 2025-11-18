@@ -43,7 +43,12 @@ public:
     /**
      * @brief 持有消所有权，持有后需要通过DeleteMessage释放
      */
-    virtual void Hold() const = 0;
+    virtual void Acquire() = 0;
+
+    /**
+     * @brief 释放消息
+     */
+    virtual void Release() = 0;
 
     /**
      * @brief 设置消息数据长度

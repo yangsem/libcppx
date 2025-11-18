@@ -149,9 +149,11 @@ constexpr const char *kConnectTimeoutMs = "connect_timeout_ms"; // 建立连接�
 /* ============================== 网络引擎公共配置,全局和监听器、连接都可以使用 ============================== */
 constexpr const char *kProtocol = "protocol"; // 协议，类型: string
 constexpr const char *kIsASyncSend = "is_async_send"; // 是否异步发送，类型: bool
-constexpr const char *kSocketBufferBytes = "socket_buffer_bytes"; // 套接字缓冲区字节大小，类型: uint32_t
+constexpr const char *kSocketSendBufferBytes = "socket_send_buffer_bytes"; // 套接字发送缓冲区字节大小，类型: uint32_t
+constexpr const char *kSocketRecvBufferBytes = "socket_recv_buffer_bytes"; // 套接字接收缓冲区字节大小，类型: uint32_t
 constexpr const char *kHeartbeatIntervalMs = "heartbeat_interval_ms"; // 心跳间隔，类型: uint32_t
 constexpr const char *kHeartbeatTimeoutMs = "heartbeat_timeout_ms"; // 心跳超时，类型: uint32_t
+constexpr const char *kAutoReconnect = "auto_reconnect"; // 是否自动重连，类型: bool
 }
 
 namespace default_value
@@ -172,11 +174,13 @@ constexpr const char *kConnectionRemoteIP = "127.0.0.1"; // 连接远程IP地址
 constexpr const uint32_t kConnectionRemotePort = 8080; // 连接远程端口，默认8080
 constexpr const uint32_t kIsSyncConnect = false; // 是否同步连接，默认false
 constexpr const uint32_t kConnectTimeoutMs = 30000; // 建立连接超时，默认30秒
+constexpr const bool kAutoReconnect = true; // 是否自动重连，默认true
 
 /* ============================== 网络引擎公共默认值 ============================== */
 constexpr const char *kProtocol = "tcp"; // 协议，默认tcp，可选tcp、udp
 constexpr const bool kIsASyncSend = true; // 是否异步发送，默认true
-constexpr const uint32_t kSocketBufferBytes = 0; // 套接字缓冲区字节大小，默认不设置,使用系统默认值
+constexpr const uint32_t kSocketSendBufferBytes = 0; // 套接字发送缓冲区字节大小，默认不设置,使用系统默认值
+constexpr const uint32_t kSocketRecvBufferBytes = 0; // 套接字接收缓冲区字节大小，默认不设置,使用系统默认值
 constexpr const uint32_t kHeartbeatIntervalMs = 1000; // 心跳间隔，默认1秒
 constexpr const uint32_t kHeartbeatTimeoutMs = 30000; // 心跳超时，默认30秒
 }

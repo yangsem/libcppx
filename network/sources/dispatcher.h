@@ -1,37 +1,41 @@
-#ifndef __CPPX_NETWORK_TASK_QUEUE_H__
-#define __CPPX_NETWORK_TASK_QUEUE_H__
+#ifndef __CPPX_NETWORK_DISPATCHER_H__
+#define __CPPX_NETWORK_DISPATCHER_H__
 
-#include <cstdint>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
 #include <functional>
+#include <mutex>
+#include <queue>
+#include <thread/thread_manager.h>
+#include <memory/allocator_ex.h>
+#include <engine.h>
 
 namespace cppx
 {
 namespace network
 {
 
+
 using CallbackFunc = std::function<void(bool bResult)>;
 
 enum class TaskType
 {
-    kAddAcceptor = 1,
-    kRemoveAcceptor,
-    kConnect,
-    kDisconnect,
-    kAddConnection,
-    kRemoveConnection,
+    kAddAcceptor = 1,  // 添加监听器
+    kRemoveAcceptor,  // 移除监听器
+    kConnect,  // 创建连接
+    kDisconnect,  // 销毁连接
+    kAddConnection,  // 添加连接到调度器
+    kRemoveConnection,  // 从调度器移除连接
 };
 
 struct Task
 {
-    TaskType eTaskType;
-    CallbackFunc funcCallback;
+    TaskType eTaskType;  // 任务类型
+    CallbackFunc funcCallback;  // 回调函数
     union {
-        int32_t iFd;
+        int32_t iFd;  // 文件描述符
     };
 };
+
+
 
 class CTaskQueue
 {
@@ -113,6 +117,27 @@ private:
     std::mutex m_mutex;
 };
 
+class IDispatcher
+{
+protected:
+    virtual ~IDispatcher() = default;
+
+public:
+    virtual int32_t Start() = 0;
+    virtual void Stop() = 0;
+    virtual int32_t Post(Task &task) = 0;
+
+    virtual bool IsRunning() const = 0;
+
+protected:
+    bool m_bRunning{false};
+    NetworkLogger *m_pLogger{nullptr};
+    base::memory::IAllocatorEx *m_pAllocatorEx{nullptr};
+    base::IThreadManager *m_pThreadManager{nullptr};
+    base::IThread *m_pThread{nullptr};
+    CTaskQueue m_TaskQueue;
+};
+
 }
 }
-#endif // __CPPX_NETWORK_TASK_QUEUE_H__
+#endif // __CPPX_NETWORK_DISPATCHER_H__

@@ -9,7 +9,8 @@ namespace cppx
 namespace network
 {
 
-CEngineImpl::CEngineImpl(NetworkLogger *pLogger) : m_pLogger(pLogger)
+CEngineImpl::CEngineImpl(NetworkLogger *pLogger, base::memory::IAllocatorEx *pAllocatorEx) 
+    : m_pLogger(pLogger), m_pAllocatorEx(pAllocatorEx), m_EventDispatcher(pLogger, pAllocatorEx)
 {
 }
 
@@ -29,13 +30,9 @@ int32_t CEngineImpl::Init(NetworkConfig *pConfig)
     try
     {
         m_strEngineName = pConfig->GetString(config::kEngineName, default_value::kEngineName);
-        m_uIOThreadCount = pConfig->GetUint32(config::kIOThreadCount, default_value::kIOThreadCount);
-        m_uIOThreadCount = std::max(m_uIOThreadCount, 1u);
-        m_vecIOThreads.resize(m_uIOThreadCount);
-        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} io thread count: {}", m_strEngineName.c_str(), Wrap(m_uIOThreadCount));
-
-        m_uIOReadWriteBytes = pConfig->GetUint32(config::kIOReadWriteBytes, default_value::kIOReadWriteBytes);
-        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} io read write bytes: {}", m_strEngineName.c_str(), Wrap(m_uIOReadWriteBytes));
+        auto uIOThreadCount = pConfig->GetUint32(config::kIOThreadCount, default_value::kIOThreadCount);
+        uIOThreadCount = std::max(uIOThreadCount, 1u);
+        m_vecIODispatchers.resize(uIOThreadCount);
     }
     catch(const std::exception& e)
     {
@@ -43,37 +40,24 @@ int32_t CEngineImpl::Init(NetworkConfig *pConfig)
         return ErrorCode::kThrowException;
     }
 
-    m_pAllocatorEx = base::memory::IAllocatorEx::GetInstance();
-
-    m_pThreadManager = base::IThreadManager::GetInstance();
-    m_pManagerThread = m_pThreadManager->CreateThread();
-    if (m_pManagerThread == nullptr)
-    {
-        LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "Failed to create manager thread");
-        return ErrorCode::kOutOfMemory;
-    }
-    char szThreadName[16];
-    snprintf(szThreadName, sizeof(szThreadName), "net_manager_%s", m_strEngineName.c_str());
-    auto iErrorNo = m_pManagerThread->Bind(szThreadName, &CEngineImpl::ManagerThreadFunc, this);
+    auto iErrorNo = m_EventDispatcher.Init();
     if (iErrorNo != ErrorCode::kSuccess)
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to bind manager thread %s", szThreadName);
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to init event dispatcher");
         return iErrorNo;
     }
-    for (uint32_t i = 0; i < m_uIOThreadCount; ++i)
+    for (auto &upIODispatcher : m_vecIODispatchers)
     {
-        m_vecIOThreads[i] = m_pThreadManager->CreateThread();
-        if (m_vecIOThreads[i] == nullptr)
+        upIODispatcher.reset(m_pAllocatorEx->New<CIODispatcher>(m_pLogger, m_pAllocatorEx));
+        if (upIODispatcher == nullptr)
         {
-            LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "Failed to create io thread");
+            LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "Failed to create io dispatcher");
             return ErrorCode::kOutOfMemory;
         }
-        char szThreadName[16];
-        snprintf(szThreadName, sizeof(szThreadName), "net_io_%s_%u", m_strEngineName.c_str(), i);
-        auto iErrorNo = m_vecIOThreads[i]->Bind(szThreadName, &CEngineImpl::IOThreadFunc, this);
+        iErrorNo = upIODispatcher->Init();
         if (iErrorNo != ErrorCode::kSuccess)
         {
-            LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to bind io thread %s", szThreadName);
+            LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to init io dispatcher");
             return iErrorNo;
         }
     }
@@ -83,74 +67,44 @@ int32_t CEngineImpl::Init(NetworkConfig *pConfig)
 
 void CEngineImpl::Exit()
 {
-    if (m_bRunning)
+    m_EventDispatcher.Exit();
+    for (auto &upIODispatcher : m_vecIODispatchers)
     {
-        Stop();
+        upIODispatcher->Exit();
     }
-
-    if (m_pManagerThread != nullptr)
-    {
-        m_pThreadManager->DestroyThread(m_pManagerThread);
-        m_pManagerThread = nullptr;
-    }
-    for (auto &pIOThread : m_vecIOThreads)
-    {
-        if (pIOThread != nullptr)
-        {
-            m_pThreadManager->DestroyThread(pIOThread);
-            pIOThread = nullptr;
-        }
-    }
+    m_vecIODispatchers.clear();
 
     m_pAllocatorEx = nullptr;
     m_pLogger = nullptr;
     m_strEngineName.clear();
-    m_pThreadManager = nullptr;
-    m_pManagerThread = nullptr;
-    m_vecIOThreads.clear();
-    m_uIOThreadCount = 0;
-    m_uIOReadWriteBytes = 0;
-    m_bRunning = false;
 }
 
 int32_t CEngineImpl::Start()
 {
-    if (m_bRunning)
+    auto iErrorNo = m_EventDispatcher.Start();
+    if (iErrorNo != ErrorCode::kSuccess)
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "{} is already started", m_strEngineName.c_str());
-        return ErrorCode::kInvalidCall;
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to start event dispatcher");
+        return iErrorNo;
     }
-
-    m_bRunning = true;
-    if (m_pManagerThread->Start() != ErrorCode::kSuccess)
+    for (auto &upIODispatcher : m_vecIODispatchers)
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to start manager thread");
-        return ErrorCode::kInvalidCall;
-    }
-    for (auto &pIOThread : m_vecIOThreads)
-    {
-        if (pIOThread->Start() != ErrorCode::kSuccess)
+        iErrorNo = upIODispatcher->Start();
+        if (iErrorNo != ErrorCode::kSuccess)
         {
-            LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to start io thread");
-            return ErrorCode::kInvalidCall;
+            LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to start io dispatcher");
+            return iErrorNo;
         }
     }
-    return ErrorCode::kSuccess;
+    return iErrorNo;
 }
 
 void CEngineImpl::Stop()
 {
-    if (!m_bRunning)
+    m_EventDispatcher.Stop();
+    for (auto &upIODispatcher : m_vecIODispatchers)
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "{} is not started", m_strEngineName.c_str());
-        return;
-    }
-
-    m_bRunning = false;
-    m_pManagerThread->Stop();
-    for (auto &pIOThread : m_vecIOThreads)
-    {
-        pIOThread->Stop();
+        upIODispatcher->Stop();
     }
 }
 
@@ -166,15 +120,15 @@ int32_t CEngineImpl::CreateAcceptor(NetworkConfig *pConfig, ICallback *pCallback
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto upAcceptor = std::unique_ptr<CAcceptorImpl>(
-            m_pAllocatorEx->New<CAcceptorImpl>(m_uNextID, pCallback, &m_TaskQueue, m_pLogger, m_pAllocatorEx));
+            m_pAllocatorEx->New<CAcceptorImpl>(m_uNextAcceptorID, pCallback, &m_EventDispatcher, m_pLogger, m_pAllocatorEx));
         if (upAcceptor == nullptr || upAcceptor->Init(pConfig) != ErrorCode::kSuccess)
         {
             LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "Failed to create acceptor");
             return ErrorCode::kOutOfMemory;
         }
-        m_umapAcceptor[m_uNextID] = std::move(upAcceptor);
-        m_uNextID++;
-        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} create acceptor id: {}", m_strEngineName.c_str(), Wrap(m_uNextID));
+        m_umapAcceptor[m_uNextAcceptorID] = std::move(upAcceptor);
+        m_uNextAcceptorID++;
+        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} create acceptor id: {}", m_strEngineName.c_str(), Wrap(m_uNextAcceptorID));
     }
     catch(const std::exception& e)
     {
@@ -215,15 +169,16 @@ int32_t CEngineImpl::CreateConnection(NetworkConfig *pConfig, ICallback *pCallba
     try
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        auto upConnection = std::unique_ptr<CConnectionImpl>(m_pAllocatorEx->New<CConnectionImpl>(m_uNextID, pCallback, &m_TaskQueue, m_pLogger, m_pAllocatorEx));
+        auto upConnection = std::unique_ptr<CConnectionImpl>(m_pAllocatorEx->New<CConnectionImpl>(m_uNextConnectionID, pCallback, &m_EventDispatcher, m_pLogger, m_pAllocatorEx));
         if (upConnection == nullptr || upConnection->Init(pConfig) != ErrorCode::kSuccess)
         {
             LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "{} failed to create connection", m_strEngineName.c_str());
             return ErrorCode::kOutOfMemory;
         }
-        m_umapConnection[m_uNextID] = std::move(upConnection);
-        m_uNextID++;
-        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} create connection id: {}", m_strEngineName.c_str(), Wrap(m_uNextID));
+        m_umapConnection[m_uNextConnectionID] = std::move(upConnection);
+        m_uNextConnectionID++;
+        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} create connection id: {}", 
+            m_strEngineName.c_str(), Wrap(m_uNextConnectionID));
     }
     catch(const std::exception& e)
     {

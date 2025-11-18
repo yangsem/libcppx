@@ -1,10 +1,9 @@
 #ifndef __CPPX_NETWORK_MESSAGE_IMPL_H__
 #define __CPPX_NETWORK_MESSAGE_IMPL_H__
 
-#include <atomic>
-#include <cstdint>
-#include <message.h>
 #include <utilities/common.h>
+#include <message.h>
+#include <connection.h>
 
 namespace cppx {
 namespace network {
@@ -25,9 +24,17 @@ public:
         return ClearPointerLastBit(m_pConnection);
     }
 
-    void Hold() const override
+    void Acquire() override
     {
-        m_pConnection = SetPointerLastBit(m_pConnection);
+        ++m_uRefCount;
+    }
+
+    void Release() override
+    {
+        if (--m_uRefCount == 0)
+        {
+            m_pConnection->DeleteMessage(this);
+        }
     }
 
     int32_t SetSize(uint32_t uSize) override
@@ -46,8 +53,10 @@ public:
 private:
     uint8_t *m_pData{nullptr};
     uint32_t m_uSize{0};
+    uint32_t m_uOffset{0};
+    uint32_t m_uRefCount{0};
     uint32_t m_uCapacity{0};
-    mutable IConnection *m_pConnection{nullptr};
+    IConnection *m_pConnection{nullptr};
 };
 
 } // namespace network
