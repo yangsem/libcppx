@@ -2,7 +2,7 @@
 #define __CPPX_NETWORK_MESSAGE_POOL_H__
 
 #include "message_impl.h"
-#include <memory/allocator.h>
+#include <memory/allocator_ex.h>
 
 namespace cppx
 {
@@ -12,10 +12,11 @@ namespace network
 class CMessagePool
 {
 public:
-    CMessagePool();
+    CMessagePool(base::memory::IAllocatorEx *pAllocatorEx);
     ~CMessagePool();
 
-    int32_t Init(base::memory::IAllocator *pAllocator, uint32_t uMaxMessageCount, uint32_t uMessageSize);
+    int32_t Init(uint32_t uMaxMessageCount, uint32_t uMessageSize);
+    void Exit();
 
     IMessage *NewMessage(uint32_t uLength)
     {

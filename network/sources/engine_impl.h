@@ -45,8 +45,8 @@ public:
     int32_t GetStats(NetworkStats *pStats) const override;
 
 private:
-    base::memory::IAllocatorEx *m_pAllocatorEx{nullptr};
     CMessagePool m_MessagePool;
+    base::memory::IAllocatorEx *m_pAllocatorEx{nullptr};
 
     NetworkLogger *m_pLogger{nullptr};
     std::string m_strEngineName;

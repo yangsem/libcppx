@@ -1,6 +1,8 @@
 #ifndef __CPPX_NETWORK_DISPATCHER_H__
 #define __CPPX_NETWORK_DISPATCHER_H__
 
+#include "utilities/common.h"
+#include <cstdint>
 #include <functional>
 #include <mutex>
 #include <queue>
@@ -18,12 +20,10 @@ using CallbackFunc = std::function<void(bool bResult)>;
 
 enum class TaskType
 {
-    kAddAcceptor = 1,  // 添加监听器
+    kAddAcceptor = 0,  // 添加监听器
     kRemoveAcceptor,  // 移除监听器
-    kConnect,  // 创建连接
-    kDisconnect,  // 销毁连接
-    kAddConnection,  // 添加连接到调度器
-    kRemoveConnection,  // 从调度器移除连接
+    kAsyncConnect,  // 创建连接
+    kAsyncDisconnect,  // 销毁连接
 };
 
 struct Task
@@ -31,7 +31,7 @@ struct Task
     TaskType eTaskType;  // 任务类型
     CallbackFunc funcCallback;  // 回调函数
     union {
-        int32_t iFd;  // 文件描述符
+        void *pCtx;  // 上下文
     };
 };
 
@@ -40,25 +40,12 @@ struct Task
 class CTaskQueue
 {
 public:
-    CTaskQueue();
-    ~CTaskQueue();
+    CTaskQueue() = default;
+    ~CTaskQueue() = default;
 
-    bool IsRunning() const
-    {
-        return m_bRunning;
-    }
-
-    void Start()
+    void Clear()
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_bRunning = true;
-    }
-
-    void Stop()
-    {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        m_bRunning = false;
-        
         while (!m_queueTasks.empty())
         {
             auto &task = m_queueTasks.front();
@@ -70,67 +57,125 @@ public:
         }
     }
 
-    int32_t PostTask(Task &pTask)
+    int32_t PostTask(Task &task)
     {
         try
         {
             std::lock_guard<std::mutex> guard(m_mutex);
-            if (!m_bRunning)
-            {
-                return -1;
-            }
-            m_queueTasks.push(pTask);
+            m_queueTasks.push(task);
         }
         catch(const std::exception& e)
         {
-            return -1;
+            return ErrorCode::kThrowException;
         }
-        return 0;
+        return ErrorCode::kSuccess;
     }
 
-    int32_t GetTask(Task &pTask)
+    int32_t GetTask(Task &task)
     {
         try
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            if (!m_bRunning)
-            {
-                return -1;
-            }
             if (m_queueTasks.empty())
             {
-                return -1;
+                return ErrorCode::kInvalidState;
             }
-            pTask = std::move(m_queueTasks.front());
+            task = std::move(m_queueTasks.front());
             m_queueTasks.pop();
         }
         catch(const std::exception& e)
         {
-            return -1;
+            return ErrorCode::kThrowException;
         }
-        return 0;
+        return ErrorCode::kSuccess;
     }
 
 private:
-    volatile bool m_bRunning{true};
     std::queue<Task> m_queueTasks;
     std::mutex m_mutex;
 };
 
 class IDispatcher
 {
-protected:
-    virtual ~IDispatcher() = default;
-
 public:
-    virtual int32_t Start() = 0;
-    virtual void Stop() = 0;
-    virtual int32_t Post(Task &task) = 0;
+    IDispatcher(NetworkLogger *pLogger, base::memory::IAllocatorEx *pAllocatorEx)
+    : m_pLogger(pLogger), m_pAllocatorEx(pAllocatorEx)
+    {
+    }
 
-    virtual bool IsRunning() const = 0;
+    ~IDispatcher() = default;
+
+    int32_t Init()
+    {
+        m_pThreadManager = base::IThreadManager::GetInstance();
+        if (m_pThreadManager == nullptr)
+        {
+            SetLastError(ErrorCode::kInvalidParam);
+            return ErrorCode::kInvalidParam;
+        }
+
+        m_pThread = m_pThreadManager->CreateThread();
+        if (m_pThread == nullptr)
+        {
+            SetLastError(ErrorCode::kInvalidParam);
+            return ErrorCode::kInvalidParam;
+        }
+
+        return ErrorCode::kSuccess;
+    }
+
+    void Exit()
+    {
+        if (m_pThread != nullptr)
+        {
+            m_pThreadManager->DestroyThread(m_pThread);
+            m_pThread = nullptr;
+        }
+
+        m_pThreadManager = nullptr;
+        m_pLogger = nullptr;
+        m_pAllocatorEx = nullptr;
+        m_pThread = nullptr;
+    }
+
+    int32_t Start()
+    {
+        if (m_pThread == nullptr)
+        {
+            SetLastError(ErrorCode::kInvalidParam);
+            return ErrorCode::kInvalidParam;
+        }
+
+        return m_pThread->Start();
+    }
+
+    void Stop()
+    {
+        if (m_pThread == nullptr)
+        {
+            return;
+        }
+
+        m_pThread->Stop();
+        m_TaskQueue.Clear();
+    }
+    
+    int32_t Post(Task &task)
+    {
+        return m_TaskQueue.PostTask(task);
+    }
+
+    bool IsRunning() const
+    {
+        if (m_pThread != nullptr)
+        {
+            return m_pThread->GetThreadState() == base::IThread::ThreadState::kRunning
+                   || m_pThread->GetThreadState() == base::IThread::ThreadState::kPaused;
+        }
+        return false;
+    }
 
 protected:
-    bool m_bRunning{false};
     NetworkLogger *m_pLogger{nullptr};
     base::memory::IAllocatorEx *m_pAllocatorEx{nullptr};
     base::IThreadManager *m_pThreadManager{nullptr};

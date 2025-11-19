@@ -23,23 +23,7 @@ CAcceptorImpl::CAcceptorImpl(uint64_t uID, ICallback *pCallback, IDispatcher *pD
 
 CAcceptorImpl::~CAcceptorImpl()
 {
-    if (m_bRunning)
-    {
-        Stop();
-        m_bRunning = false;
-    }
-
-    if (m_iFd != -1)
-    {
-        close(m_iFd);
-        m_iFd = -1;
-    }
-    m_pCallback = nullptr;
-    m_strAcceptorName.clear();
-    m_strAcceptorIP.clear();
-    m_uAcceptorPort = 0;
-    m_pLogger = nullptr;
-    m_uID = 0;
+    Exit();
 }
 
 int32_t CAcceptorImpl::Init(NetworkConfig *pConfig)
@@ -89,6 +73,23 @@ int32_t CAcceptorImpl::Init(NetworkConfig *pConfig)
     return ErrorCode::kSuccess;
 }
 
+void CAcceptorImpl::Exit()
+{
+    if (m_iFd != -1)
+    {
+        close(m_iFd);
+        m_iFd = -1;
+    }
+    m_pCallback = nullptr;
+    m_pDispatcher = nullptr;
+    m_pAllocatorEx = nullptr;
+    m_strAcceptorName.clear();
+    m_strAcceptorIP.clear();
+    m_uAcceptorPort = 0;
+    m_pLogger = nullptr;
+    m_uID = 0;
+}
+
 int32_t CAcceptorImpl::Start()
 {
     if (m_iFd == -1)
@@ -101,7 +102,7 @@ int32_t CAcceptorImpl::Start()
     Task task;
     task.eTaskType = TaskType::kAddAcceptor;
     task.funcCallback = nullptr;
-    task.iFd = m_iFd;
+    task.pCtx = this;
     if (m_pDispatcher->Post(task) != 0)
     {
         LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", m_strAcceptorName.c_str());
@@ -125,7 +126,7 @@ void CAcceptorImpl::Stop()
     Task task;
     task.eTaskType = TaskType::kRemoveAcceptor;
     task.funcCallback = [&] (bool bResult) {  bTaskResult = bResult; bTaskDone = true; };
-    task.iFd = m_iFd;
+    task.pCtx = this;
     if (m_pDispatcher->Post(task) != 0)
     {
         LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", m_strAcceptorName.c_str());

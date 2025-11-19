@@ -10,7 +10,8 @@ namespace network
 {
 
 CEngineImpl::CEngineImpl(NetworkLogger *pLogger, base::memory::IAllocatorEx *pAllocatorEx) 
-    : m_pLogger(pLogger), m_pAllocatorEx(pAllocatorEx), m_EventDispatcher(pLogger, pAllocatorEx)
+    : m_MessagePool(pAllocatorEx), m_pAllocatorEx(pAllocatorEx)
+    , m_pLogger(pLogger), m_EventDispatcher(pLogger, pAllocatorEx)
 {
 }
 
@@ -40,7 +41,9 @@ int32_t CEngineImpl::Init(NetworkConfig *pConfig)
         return ErrorCode::kThrowException;
     }
 
-    auto iErrorNo = m_EventDispatcher.Init();
+    m_MessagePool.Init(0, 0);
+
+    auto iErrorNo = m_EventDispatcher.Init(m_strEngineName.c_str());
     if (iErrorNo != ErrorCode::kSuccess)
     {
         LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to init event dispatcher");
@@ -73,6 +76,9 @@ void CEngineImpl::Exit()
         upIODispatcher->Exit();
     }
     m_vecIODispatchers.clear();
+
+    m_umapAcceptor.clear();
+    m_umapConnection.clear();
 
     m_pAllocatorEx = nullptr;
     m_pLogger = nullptr;
@@ -127,8 +133,12 @@ int32_t CEngineImpl::CreateAcceptor(NetworkConfig *pConfig, ICallback *pCallback
             return ErrorCode::kOutOfMemory;
         }
         m_umapAcceptor[m_uNextAcceptorID] = std::move(upAcceptor);
+
+        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} create acceptor name: {}, id: {} bind {}:{}", 
+            m_strEngineName.c_str(), upAcceptor->GetName(), Wrap(m_uNextAcceptorID), 
+            upAcceptor->GetIP(), Wrap(upAcceptor->GetPort()));
+
         m_uNextAcceptorID++;
-        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} create acceptor id: {}", m_strEngineName.c_str(), Wrap(m_uNextAcceptorID));
     }
     catch(const std::exception& e)
     {
@@ -154,8 +164,11 @@ void CEngineImpl::DestroyAcceptor(IAcceptor *pAcceptor)
         LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Acceptor not found");
         return;
     }
+    LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} destroy acceptor name: {}, id: {} bind {}:{}", 
+        m_strEngineName.c_str(), it->second->GetName(), Wrap(pAcceptor->GetID()), 
+        it->second->GetIP(), Wrap(it->second->GetPort()));
+
     m_umapAcceptor.erase(it);
-    LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} destroy acceptor id: {}", m_strEngineName.c_str(), Wrap(pAcceptor->GetID()));
 }
 
 int32_t CEngineImpl::CreateConnection(NetworkConfig *pConfig, ICallback *pCallback)
@@ -176,9 +189,12 @@ int32_t CEngineImpl::CreateConnection(NetworkConfig *pConfig, ICallback *pCallba
             return ErrorCode::kOutOfMemory;
         }
         m_umapConnection[m_uNextConnectionID] = std::move(upConnection);
+
+        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} create connection name: {}, id: {} remote {}:{}", 
+            m_strEngineName.c_str(), upConnection->GetName(), Wrap(m_uNextConnectionID), 
+            upConnection->GetRemoteIP(), Wrap(upConnection->GetRemotePort()));
+
         m_uNextConnectionID++;
-        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} create connection id: {}", 
-            m_strEngineName.c_str(), Wrap(m_uNextConnectionID));
     }
     catch(const std::exception& e)
     {
@@ -204,8 +220,12 @@ void CEngineImpl::DestroyConnection(IConnection *pConnection)
         LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Connection not found");
         return;
     }
+
+    LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} destroy connection name: {}, id: {} remote {}:{}", 
+        m_strEngineName.c_str(), it->second->GetName(), Wrap(pConnection->GetID()), 
+        it->second->GetRemoteIP(), Wrap(it->second->GetRemotePort()));
+
     m_umapConnection.erase(it);
-    LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} destroy connection id: {}", m_strEngineName.c_str(), Wrap(pConnection->GetID()));
 }
 
 int32_t CEngineImpl::DetachConnection(IConnection *pConnection)
@@ -215,7 +235,21 @@ int32_t CEngineImpl::DetachConnection(IConnection *pConnection)
         LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Invalid parameters");
         return ErrorCode::kInvalidParam;
     }
-    return ErrorCode::kSuccess;
+
+    auto pConnectionImpl = static_cast<CConnectionImpl *>(pConnection);
+    return pConnectionImpl->Detach();
+}
+
+int32_t CEngineImpl::AttachConnection(IConnection *pConnection)
+{
+    if (pConnection == nullptr)
+    {
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Invalid parameters");
+        return ErrorCode::kInvalidParam;
+    }
+
+    auto pConnectionImpl = static_cast<CConnectionImpl *>(pConnection);
+    return pConnectionImpl->Attach();
 }
 
 int32_t CEngineImpl::GetStats(NetworkStats *pStats) const
@@ -224,6 +258,15 @@ int32_t CEngineImpl::GetStats(NetworkStats *pStats) const
     {
         LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Invalid parameters");
         return ErrorCode::kInvalidParam;
+    }
+    
+    for (auto &upAcceptor : m_umapAcceptor)
+    {
+        upAcceptor.second->GetStats(pStats);
+    }
+    for (auto &upConnection : m_umapConnection)
+    {
+        upConnection.second->GetStats(pStats);
     }
     return ErrorCode::kSuccess;
 }

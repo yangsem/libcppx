@@ -22,6 +22,7 @@ public:
     ~CAcceptorImpl() override;
 
     int32_t Init(NetworkConfig *pConfig);
+    void Exit();
     int32_t Start() override;
     void Stop() override;
 
@@ -33,6 +34,8 @@ public:
     const char *GetName() const { return m_strAcceptorName.c_str(); }
     const char *GetIP() const { return m_strAcceptorIP.c_str(); }
     uint16_t GetPort() const { return m_uAcceptorPort; }
+
+    int32_t GetStats(NetworkStats *pStats) const;
 
 private:
     bool m_bRunning{false};

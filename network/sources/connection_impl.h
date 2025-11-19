@@ -56,6 +56,12 @@ public:
     uint16_t GetLocalPort() const override { return m_uLocalPort; }
 
     int32_t GetFd() const { return m_iFd; }
+    const char *GetName() const { return m_strConnectionName.c_str(); }
+    
+    int32_t Attach();
+    int32_t Detach();
+
+    int32_t GetStats(NetworkStats *pStats) const;
 
 private:
     inline int32_t SendData(const uint8_t *pData, uint32_t uLength);
