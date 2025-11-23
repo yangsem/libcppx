@@ -1,6 +1,8 @@
 #include "connection_impl.h"
 #include "callback.h"
+#include "dispatcher.h"
 #include "engine.h"
+#include "message.h"
 #include "thread/spin_lock.h"
 #include "utilities/common.h"
 #include <cstdint>
@@ -16,6 +18,9 @@ namespace cppx
 {
 namespace network
 {
+
+
+constexpr uint32_t kNormalMessageMaxSize = 1024; // 常见消息的最大长度
 
 CConnectionImpl::CConnectionImpl(uint64_t uID, ICallback *pCallback, IDispatcher *pDispatcher, 
                                  NetworkLogger *pLogger, base::memory::IAllocatorEx *pAllocatorEx)
@@ -43,7 +48,7 @@ CConnectionImpl::~CConnectionImpl()
     m_uIOThreadIndex = 0;
 }
 
-int32_t CConnectionImpl::InitChannel()
+int32_t CConnectionImpl::InitSendChannel()
 {
     m_pSpinLockSend = base::SpinLock::Create();
     if (m_pSpinLockSend == nullptr)
@@ -52,23 +57,15 @@ int32_t CConnectionImpl::InitChannel()
         return ErrorCode::kSystemError;
     }
 
-    if (m_bIsASyncSend)
+    base::channel::ChannelConfig stConfig;
+    stConfig.uElementSize = sizeof(IMessage *);
+    stConfig.uMaxElementCount = 1024;
+    m_pChannelSend = base::channel::SPSCFixedBoundedChannel::Create(&stConfig);
+    m_pChannelPrioritySend = base::channel::SPSCFixedBoundedChannel::Create(&stConfig);
+    if (m_pChannelSend == nullptr || m_pChannelPrioritySend == nullptr)
     {
-        base::channel::ChannelConfig stConfig;
-        stConfig.uElementSize = sizeof(IMessage *);
-        stConfig.uMaxElementCount = 1024;
-        m_pChannelSend = base::channel::SPSCFixedBoundedChannel::Create(&stConfig);
-        m_pChannelPrioritySend = base::channel::SPSCFixedBoundedChannel::Create(&stConfig);
-        if (m_pChannelSend == nullptr || m_pChannelPrioritySend == nullptr)
-        {
-            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to create channel", m_strConnectionName.c_str());
-            return ErrorCode::kSystemError;
-        }
-    }
-    else
-    {
-        m_pChannelSend = nullptr;
-        m_pChannelPrioritySend = nullptr;
+        LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to create channel", m_strConnectionName.c_str());
+        return ErrorCode::kSystemError;
     }
 
     return ErrorCode::kSuccess;
@@ -85,7 +82,6 @@ int32_t CConnectionImpl::Init(NetworkConfig *pConfig)
     try
     {
         m_strConnectionName = pConfig->GetString(config::kConnectionName, default_value::kConnectionName);
-        m_bIsASyncSend = pConfig->GetBool(config::kIsASyncSend, default_value::kIsASyncSend);
         m_bIsSyncConnect = pConfig->GetBool(config::kIsSyncConnect, default_value::kIsSyncConnect);
         m_uConnectTimeoutMs = pConfig->GetUint32(config::kConnectTimeoutMs, default_value::kConnectTimeoutMs);
         m_strRemoteIP = pConfig->GetString(config::kConnectionRemoteIP, default_value::kConnectionRemoteIP);
@@ -101,7 +97,9 @@ int32_t CConnectionImpl::Init(NetworkConfig *pConfig)
         return ErrorCode::kThrowException;
     }
 
-    if (InitChannel() != ErrorCode::kSuccess)
+
+
+    if (InitSendChannel() != ErrorCode::kSuccess)
     {
         LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to init channel", m_strConnectionName.c_str());
         return ErrorCode::kSystemError;
@@ -166,69 +164,73 @@ int32_t CConnectionImpl::Connect(const char *pRemoteIP, uint16_t uRemotePort, ui
     auto iRet = connect(m_iFd, (struct sockaddr *)&addr, sizeof(addr));
     if (iRet == -1)
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to connect to {}:{}", 
-            m_strConnectionName.c_str(), m_strRemoteIP.c_str(), Wrap(m_uRemotePort));
+        if (errno != EINPROGRESS)
+        {
+            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to connect to {}:{}", 
+                m_strConnectionName.c_str(), m_strRemoteIP.c_str(), Wrap(m_uRemotePort));
+            return ErrorCode::kSystemError;
+        }
+    }
+
+    // 异步连接
+    if (!m_bIsSyncConnect)
+    {
+        Task task;
+        task.eTaskType = iRet == 0 ? TaskType::kConnected : TaskType::kAddConnection;
+        task.funcCallback = nullptr;
+        task.pCtx = this;
+        if (m_pDispatcher->PostTask(task) != ErrorCode::kSuccess)
+        {
+            Close();
+            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", m_strConnectionName.c_str());
+            return ErrorCode::kSystemError;
+        }
+        return ErrorCode::kSuccess;
+    }
+
+    // 同步连接
+    struct pollfd pfd;
+    pfd.fd = m_iFd;
+    pfd.events = POLLIN;
+    iRet = poll(&pfd, 1, uTimeoutMs == 0 ? m_uConnectTimeoutMs : uTimeoutMs);
+    if (iRet == -1)
+    {
+        LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to poll: {}", 
+            m_strConnectionName.c_str(), strerror(errno));
         return ErrorCode::kSystemError;
     }
     else if (iRet == 0)
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kEvent, "{} connected to {}:{}", 
+        Close();
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} connect to {}:{} timeout", 
             m_strConnectionName.c_str(), m_strRemoteIP.c_str(), Wrap(m_uRemotePort));
         return ErrorCode::kSystemError;
     }
-
-    if (m_bIsSyncConnect)
+    else
     {
-        struct pollfd pfd;
-        pfd.fd = m_iFd;
-        pfd.events = POLLIN;
-        auto iRet = poll(&pfd, 1, uTimeoutMs == 0 ? m_uConnectTimeoutMs : uTimeoutMs);
-        if (iRet == -1)
+        // 查询连接状态
+        int32_t iStatus = 0;
+        socklen_t iStatusLen = sizeof(iStatus);
+        if (getsockopt(m_iFd, SOL_SOCKET, SO_ERROR, &iStatus, &iStatusLen) == -1)
         {
-            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to poll: {}", 
+            Close();
+            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to get socket status: {}", 
                 m_strConnectionName.c_str(), strerror(errno));
             return ErrorCode::kSystemError;
         }
-        else if (iRet == 0)
+        if (iStatus != 0)
         {
-            LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} connect to {}:{} timeout", 
-                m_strConnectionName.c_str(), m_strRemoteIP.c_str(), Wrap(m_uRemotePort));
-            return ErrorCode::kInvalidState;
-        }
-        else
-        {
-            // 查询连接状态
-            int32_t iStatus = 0;
-            socklen_t iStatusLen = sizeof(iStatus);
-            if (getsockopt(m_iFd, SOL_SOCKET, SO_ERROR, &iStatus, &iStatusLen) == -1)
-            {
-                LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to get socket status: {}", 
-                    m_strConnectionName.c_str(), strerror(errno));
-                return ErrorCode::kSystemError;
-            }
-            if (iStatus != 0)
-            {
-                LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} connect to {}:{} failed: {}", 
-                    m_strConnectionName.c_str(), m_strRemoteIP.c_str(), Wrap(m_uRemotePort), strerror(iStatus));
-                return ErrorCode::kSystemError;
-            }
-            LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} connected to {}:{} successfully", 
-                m_strConnectionName.c_str(), m_strRemoteIP.c_str(), Wrap(m_uRemotePort));
-        }
-    }
-    else
-    {
-        Task task;
-        task.eTaskType = TaskType::kConnect;
-        task.funcCallback = nullptr;
-        task.iFd = m_iFd;
-        if (m_pDispatcher->Post(task) != 0)
-        {
-            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", m_strConnectionName.c_str());
+            Close();
+            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} connect to {}:{} failed: {}", 
+                m_strConnectionName.c_str(), m_strRemoteIP.c_str(), Wrap(m_uRemotePort), strerror(iStatus));
             return ErrorCode::kSystemError;
         }
+
+        LOG_EVENT(m_pLogger, ErrorCode::kEvent, "{} connected to {}:{} successfully", 
+            m_strConnectionName.c_str(), m_strRemoteIP.c_str(), Wrap(m_uRemotePort));
     }
 
+    // 同步连接，不需要回调
     return ErrorCode::kSuccess;
 }
 
@@ -241,38 +243,22 @@ void CConnectionImpl::Close()
     }
 
     Task task;
-    task.eTaskType = TaskType::kDisconnect;
     task.funcCallback = nullptr;
-    task.iFd = m_iFd;
-    volatile bool bTaskDone = false;
-    volatile bool bTaskResult = false;
-    if (m_bIsSyncConnect)
+    task.pCtx = this;
+    task.eTaskType = TaskType::kDoDisconnect;
+    if (!m_bIsSyncConnect)
     {
-        task.funcCallback = [&] (bool bResult) { 
-            bTaskResult = bResult;
-            bTaskDone = true;
-        };
-    }
-    if (m_pDispatcher->Post(task) != 0)
-    {
-        LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", m_strConnectionName.c_str());
-        return;
-    }
-
-    if (m_bIsSyncConnect)
-    {
-        while (m_pDispatcher->IsRunning() && !bTaskDone)
+        // 异步断开， 触发回调
+        if (m_pDispatcher->PostTask(task) != ErrorCode::kSuccess)
         {
-            usleep(1000); // 1ms
-        }
-
-        if (!m_pDispatcher->IsRunning())
-        {
-            LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} is not running", m_strConnectionName.c_str());
+            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", m_strConnectionName.c_str());
             return;
         }
-
-        if (!bTaskResult)
+    }
+    else
+    {
+        // 同步断开，不触发回调
+        if (m_pDispatcher->DoTask(task) != ErrorCode::kInvalidCall)
         {
             LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to disconnect", m_strConnectionName.c_str());
             return;
@@ -280,144 +266,195 @@ void CConnectionImpl::Close()
     }
 }
 
-int32_t CConnectionImpl::SendData(const uint8_t *pData, uint32_t uLength)
-{
-    uint32_t uSent = 0;
-    while (uSent < uLength)
-    {
-        auto iRet = write(m_iFd, pData + uSent, uLength - uSent);
-        if (unlikely(iRet == -1))
-        {
-            if (errno == EAGAIN)
-            {
-                usleep(0);
-                continue;
-            }
-            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to send message: {}", 
-                m_strConnectionName.c_str(), strerror(errno));
-            return ErrorCode::kSystemError;
-        }
-        uSent += iRet;
-    }
-    return ErrorCode::kSuccess;
-}
-
 int32_t CConnectionImpl::Send(IMessage *pMessage, bool bPriority)
 {
-    if (unlikely(pMessage == nullptr))
+    if (unlikely(pMessage == nullptr || m_uIOThreadIndex == std::numeric_limits<uint32_t>::max()))
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Invalid parameters");
-        return ErrorCode::kInvalidParam;
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "{} invalid call", 
+            m_strConnectionName.c_str());
+        return ErrorCode::kInvalidCall;
     }
 
     base::SpinLockGuard guard(m_pSpinLockSend);
-    if (!m_bIsASyncSend)
+    auto channel = bPriority ? m_pChannelPrioritySend : m_pChannelSend;
+    auto pData = channel->New();
+    if (likely(pData != nullptr))
     {
-        return SendData(pMessage->GetData(), pMessage->GetDataLength());
-    }   
-    else
-    {
-        auto channel = bPriority ? m_pChannelPrioritySend : m_pChannelSend;
-        auto pData = channel->New();
-        if (likely(pData != nullptr))
-        {
-            *reinterpret_cast<IMessage **>(pData) = pMessage;
-            channel->Post(pData);
-            return ErrorCode::kSuccess;
-        }
-        else
-        {
-            LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "{} failed to send message", m_strConnectionName.c_str());
-            return ErrorCode::kOutOfMemory;
-        }
+        *reinterpret_cast<IMessage **>(pData) = pMessage;
+        channel->Post(pData);
+        return ErrorCode::kSuccess;
     }
+
+    return ErrorCode::kOutOfMemory;
 }
 
 int32_t CConnectionImpl::Send(const uint8_t *pData, uint32_t uLength, bool bPriority)
 {
-    if (unlikely(pData == nullptr || uLength == 0))
+    if (unlikely(pData == nullptr || uLength == 0 || m_uIOThreadIndex == std::numeric_limits<uint32_t>::max()))
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Invalid parameters");
-        return ErrorCode::kInvalidParam;
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "{} invalid call", 
+            m_strConnectionName.c_str());
+        return ErrorCode::kInvalidCall;
     }
 
-    if (!m_bIsASyncSend)
-    {
-        return SendData(pData, uLength);
-    }
-    else
-    {
-        auto pMessage = NewMessage(uLength);
-        if (likely(pMessage != nullptr))
-        {
-            pMessage->Append(pData, uLength);
-            return Send(pMessage, bPriority);
-        }
-        else
-        {
-            LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "{} failed to create message", m_strConnectionName.c_str());
-            return ErrorCode::kOutOfMemory;
-        }
-    }
-}
-
-int32_t CConnectionImpl::Recv(IMessage **ppMessage, uint32_t uTimeoutMs)
-{
-    if (unlikely(ppMessage == nullptr))
-    {
-        LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Invalid parameters");
-        return ErrorCode::kInvalidParam;
-    }
-
-    constexpr uint32_t kMessageBufferSize = 1024;
-    auto pMessage = NewMessage(kMessageBufferSize);
+    auto pMessage = NewMessage(uLength);
     if (unlikely(pMessage == nullptr))
     {
         LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "{} failed to create message", m_strConnectionName.c_str());
         return ErrorCode::kOutOfMemory;
     }
 
-    auto pData = pMessage->GetData();
-    auto uLength = pMessage->GetDataLength();
-    auto uReceived = 0;
-    uint64_t uStartTimeNs = 0;
-    uint64_t uEndTimeNs = 0;
-    clock_get_time_nano(uStartTimeNs);
-    uEndTimeNs = uStartTimeNs + uTimeoutMs * kMill;
-    while (uStartTimeNs < uEndTimeNs)
+    pMessage->Append(pData, uLength);
+    if (likely(Send(pMessage, bPriority) == ErrorCode::kSuccess))
     {
-        auto iRet = read(m_iFd, pData + uReceived, kMessageBufferSize - uReceived);
-        if (unlikely(iRet == -1))
-        {
-            if (errno == EAGAIN)
-            {
-                usleep(0);
-                clock_get_time_nano(uStartTimeNs);
-                continue;
-            }
-            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to recv message: {}", 
-                m_strConnectionName.c_str(), strerror(errno));
-            return ErrorCode::kSystemError;
-        }
-        uReceived += iRet;
-        auto uMsgLength = m_pCallback->OnMessageLength(pData, uReceived);
-        if (uMsgLength == 0)
-        {
-            continue;
-        }
-        if (uMsgLength > uLength)
-        {
-            LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} message length is too long", m_strConnectionName.c_str());
-        }
-        if (uReceived >= uLength)
-        {
-            break;
-        }
-        clock_get_time_nano(uStartTimeNs);
+        return ErrorCode::kSuccess;
+    }
+    else
+    {
+        DeleteMessage(pMessage);
+        return ErrorCode::kOutOfMemory;
+    }
+}
+
+int32_t CConnectionImpl::Recv(IMessage **ppMessage, uint32_t uTimeoutMs)
+{
+    UNSED(ppMessage);
+    UNSED(uTimeoutMs);
+    return ErrorCode::kInvalidCall;
+}
+
+int32_t CConnectionImpl::Recv(void *pData, uint32_t uLength, uint32_t uTimeoutMs)
+{
+    UNSED(pData);
+    UNSED(uLength);
+    UNSED(uTimeoutMs);
+    return ErrorCode::kInvalidCall;
+}
+
+int32_t CConnectionImpl::Call(IMessage *pRequest, IMessage *pResponse, uint32_t uTimeoutMs)
+{
+    UNSED(pRequest);
+    UNSED(pResponse);
+    UNSED(uTimeoutMs);
+    return ErrorCode::kInvalidCall;
+}
+
+int32_t CConnectionImpl::Call(const uint8_t *pRequest, uint32_t uRequestLength, IMessage *pResponse, uint32_t uTimeoutMs)
+{
+    UNSED(pRequest);
+    UNSED(uRequestLength);
+    UNSED(pResponse);
+    UNSED(uTimeoutMs);
+    return ErrorCode::kInvalidCall;
+}
+
+int32_t CConnectionImpl::OnConnected()
+{
+    if (m_pCallback != nullptr)
+    {
+        return m_pCallback->OnConnected(this);
     }
     return ErrorCode::kSuccess;
 }
 
+void CConnectionImpl::OnDisconnected()
+{
+    if (m_iFd != -1)
+    {
+        close(m_iFd);
+        m_iFd = -1;
+    }
+
+    if (m_pCallback != nullptr)
+    {
+        m_pCallback->OnDisconnected(this);
+    }
+}
+
+int32_t CConnectionImpl::DeliverMessage(IMessage *pMessage)
+{
+    uint32_t uDeliverLength = 0;
+    auto uMessageLength = m_pCallback->OnMessageLength(pMessage->GetData(), pMessage->GetDataLength());
+    if (unlikely(uMessageLength == 0))
+    {
+        return ErrorCode::kSuccess;
+    }
+    else if (unlikely(uMessageLength == UINT32_MAX))
+    {
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} invalid message", m_strConnectionName.c_str());
+        return ErrorCode::kInvalidState;
+    }
+    else
+    {
+        if (likely(pMessage->GetDataLength() == uMessageLength))
+        {
+            m_pCallback->OnMessage(this, pMessage);
+            return ErrorCode::kSuccess;
+        }
+        else if (pMessage->GetDataLength() > uMessageLength)
+        {
+            // 不止一个消息
+            while (uDeliverLength < pMessage->GetDataLength())
+            {
+                auto pNewMessage = NewMessage(uMessageLength);
+                if (unlikely(pNewMessage == nullptr))
+                {
+                    LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "{} failed to create message", m_strConnectionName.c_str());
+                    return ErrorCode::kOutOfMemory;
+                }
+                pNewMessage->Append(pMessage->GetData() + uDeliverLength, uMessageLength);
+                pNewMessage->SetSize(uMessageLength);
+                uDeliverLength += uMessageLength;
+                m_pCallback->OnMessage(this, pNewMessage);
+            }
+        }
+        else
+        {
+            // 不足一个消息
+            return ErrorCode::kSuccess;
+        }
+    }
+}
+
+int32_t CConnectionImpl::Recv(uint32_t uSize)
+{
+    int32_t iTotalRecv = 0;
+    while (iTotalRecv < uSize)
+    {
+        auto pData = m_pMessageRecv->GetData();
+        auto uCapacity = m_pMessageRecv->GetCapacity();
+        auto iRecv = recv(m_iFd, pData + iTotalRecv, uCapacity - iTotalRecv, 0);
+        if (likely(iRecv > 0))
+        {
+            iTotalRecv += iRecv;
+            m_pMessageRecv->SetSize(m_pMessageRecv->GetDataLength() + iRecv);
+            auto iRet = DeliverMessage(m_pMessageRecv);
+            if (unlikely(iRet != ErrorCode::kSuccess))
+            {
+                LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to deliver message", 
+                    m_strConnectionName.c_str());
+                return -1;
+            }
+        }
+        else if (iRecv == 0)
+        {
+            return 0;
+        }
+        else if (iRecv == -1)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                // 可能 return 0？
+                return iTotalRecv;
+            }
+
+            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to recv: {}", 
+                m_strConnectionName.c_str(), strerror(errno));
+            return -1;
+        }
+    }
+    return iTotalRecv;
+}
 
 }
 }

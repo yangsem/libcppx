@@ -1,14 +1,14 @@
 #ifndef __CPPX_NETWORK_DISPATCHER_H__
 #define __CPPX_NETWORK_DISPATCHER_H__
 
-#include "utilities/common.h"
-#include <cstdint>
 #include <functional>
 #include <mutex>
 #include <queue>
+#include <utilities/common.h>
 #include <thread/thread_manager.h>
 #include <memory/allocator_ex.h>
 #include <engine.h>
+#include "epoll_impl.h"
 
 namespace cppx
 {
@@ -18,12 +18,19 @@ namespace network
 
 using CallbackFunc = std::function<void(bool bResult)>;
 
-enum class TaskType
+enum class TaskType 
 {
-    kAddAcceptor = 0,  // 添加监听器
-    kRemoveAcceptor,  // 移除监听器
-    kAsyncConnect,  // 创建连接
-    kAsyncDisconnect,  // 销毁连接
+    kAddAcceptor = 0, // 添加监听器到epoll
+    kRemoveAcceptor,  // 从epoll移除监听器
+    kAddConnection,   // 添加连接到epoll
+    kRemoveConnection,// 从epoll移除连接
+    kDoDisconnect,    // 断开连接
+    kConnected,       // 连接成功
+    kDisconnected,    // 连接断开
+    kAddRecv, // 添加读事件到epoll
+    kRemoveRecv, // 从epoll移除读事件
+    kAddSend, // 添加写事件到epoll
+    kRemoveSend, // 从epoll移除写事件
 };
 
 struct Task
@@ -90,6 +97,11 @@ public:
         return ErrorCode::kSuccess;
     }
 
+    bool IsEmpty() const
+    {
+        return m_queueTasks.empty();
+    }
+
 private:
     std::queue<Task> m_queueTasks;
     std::mutex m_mutex;
@@ -103,9 +115,21 @@ public:
     {
     }
 
-    ~IDispatcher() = default;
+    ~IDispatcher()
+    {
+        if (m_pThread != nullptr)
+        {
+            m_pThreadManager->DestroyThread(m_pThread);
+            m_pThread = nullptr;
+        }
 
-    int32_t Init()
+        m_pThreadManager = nullptr;
+        m_pLogger = nullptr;
+        m_pAllocatorEx = nullptr;
+        m_pThread = nullptr;
+    }
+
+    int32_t Init(uint32_t uEventSize)
     {
         m_pThreadManager = base::IThreadManager::GetInstance();
         if (m_pThreadManager == nullptr)
@@ -121,21 +145,21 @@ public:
             return ErrorCode::kInvalidParam;
         }
 
-        return ErrorCode::kSuccess;
-    }
-
-    void Exit()
-    {
-        if (m_pThread != nullptr)
+        if (m_EpollImpl.Init() != ErrorCode::kSuccess)
         {
-            m_pThreadManager->DestroyThread(m_pThread);
-            m_pThread = nullptr;
+            return ErrorCode::kInvalidCall;
         }
 
-        m_pThreadManager = nullptr;
-        m_pLogger = nullptr;
-        m_pAllocatorEx = nullptr;
-        m_pThread = nullptr;
+        try
+        {
+            m_vecEpollEvents.resize(uEventSize);
+        }
+        catch(const std::exception& e)
+        {
+            return ErrorCode::kThrowException;
+        }
+
+        return ErrorCode::kSuccess;
     }
 
     int32_t Start()
@@ -159,8 +183,13 @@ public:
         m_pThread->Stop();
         m_TaskQueue.Clear();
     }
+
+    virtual int32_t DoTask(Task &task)
+    {
+        return ErrorCode::kInvalidCall;
+    }
     
-    int32_t Post(Task &task)
+    int32_t PostTask(Task &task)
     {
         return m_TaskQueue.PostTask(task);
     }
@@ -174,6 +203,11 @@ public:
         }
         return false;
     }
+    
+    bool IsEmpty() const
+    {
+        return m_TaskQueue.IsEmpty();
+    }
 
 protected:
     NetworkLogger *m_pLogger{nullptr};
@@ -181,6 +215,9 @@ protected:
     base::IThreadManager *m_pThreadManager{nullptr};
     base::IThread *m_pThread{nullptr};
     CTaskQueue m_TaskQueue;
+
+    CEpollImpl m_EpollImpl;
+    std::vector<struct epoll_event> m_vecEpollEvents;
 };
 
 }

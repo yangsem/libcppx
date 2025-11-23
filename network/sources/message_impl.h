@@ -1,6 +1,7 @@
 #ifndef __CPPX_NETWORK_MESSAGE_IMPL_H__
 #define __CPPX_NETWORK_MESSAGE_IMPL_H__
 
+#include <cstdint>
 #include <utilities/common.h>
 #include <message.h>
 #include <connection.h>
@@ -49,6 +50,10 @@ public:
         m_uSize += uLength;
         return 0;
     }
+
+    uint32_t GetCapacity() const { return m_uCapacity; }
+
+    void SetOffset(uint32_t uOffset) { m_uOffset = uOffset; }
 
 private:
     uint8_t *m_pData{nullptr};

@@ -23,7 +23,19 @@ CAcceptorImpl::CAcceptorImpl(uint64_t uID, ICallback *pCallback, IDispatcher *pD
 
 CAcceptorImpl::~CAcceptorImpl()
 {
-    Exit();
+    if (m_iFd != -1)
+    {
+        close(m_iFd);
+        m_iFd = -1;
+    }
+    m_pCallback = nullptr;
+    m_pDispatcher = nullptr;
+    m_pAllocatorEx = nullptr;
+    m_strAcceptorName.clear();
+    m_strAcceptorIP.clear();
+    m_uAcceptorPort = 0;
+    m_pLogger = nullptr;
+    m_uID = 0;
 }
 
 int32_t CAcceptorImpl::Init(NetworkConfig *pConfig)
@@ -73,23 +85,6 @@ int32_t CAcceptorImpl::Init(NetworkConfig *pConfig)
     return ErrorCode::kSuccess;
 }
 
-void CAcceptorImpl::Exit()
-{
-    if (m_iFd != -1)
-    {
-        close(m_iFd);
-        m_iFd = -1;
-    }
-    m_pCallback = nullptr;
-    m_pDispatcher = nullptr;
-    m_pAllocatorEx = nullptr;
-    m_strAcceptorName.clear();
-    m_strAcceptorIP.clear();
-    m_uAcceptorPort = 0;
-    m_pLogger = nullptr;
-    m_uID = 0;
-}
-
 int32_t CAcceptorImpl::Start()
 {
     if (m_iFd == -1)
@@ -98,17 +93,16 @@ int32_t CAcceptorImpl::Start()
         return ErrorCode::kInvalidState;
     }
 
-    // 异步添加到epoll中
     Task task;
     task.eTaskType = TaskType::kAddAcceptor;
     task.funcCallback = nullptr;
     task.pCtx = this;
-    if (m_pDispatcher->Post(task) != 0)
+    if (m_pDispatcher->DoTask(task) != ErrorCode::kSuccess)
     {
         LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", m_strAcceptorName.c_str());
         return ErrorCode::kSystemError;
     }
-    m_bRunning = true;
+
     return ErrorCode::kSuccess;
 }
 
@@ -120,36 +114,14 @@ void CAcceptorImpl::Stop()
         return;
     }
 
-    // 同步从epoll中删除
-    volatile bool bTaskDone = false;
-    volatile bool bTaskResult = false;
     Task task;
     task.eTaskType = TaskType::kRemoveAcceptor;
-    task.funcCallback = [&] (bool bResult) {  bTaskResult = bResult; bTaskDone = true; };
+    task.funcCallback = nullptr;
     task.pCtx = this;
-    if (m_pDispatcher->Post(task) != 0)
+    if (m_pDispatcher->DoTask(task) != ErrorCode::kSuccess)
     {
         LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", m_strAcceptorName.c_str());
     }
-
-    while (m_pDispatcher->IsRunning() && !bTaskDone)
-    {
-        usleep(1000); // 1ms
-    }
-
-    if (!m_pDispatcher->IsRunning())
-    {
-        LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} is not running", m_strAcceptorName.c_str());
-        return;
-    }
-
-    if (!bTaskResult)
-    {
-        LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to remove acceptor", m_strAcceptorName.c_str());
-        return;
-    }
-
-    m_bRunning = false;
 }
 
 CConnectionImpl *CAcceptorImpl::Accept()
@@ -162,9 +134,15 @@ CConnectionImpl *CAcceptorImpl::Accept()
 
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
-    int32_t iFd = accept(m_iFd, (struct sockaddr *)&addr, &addrlen);
+    int32_t iFd = accept4(m_iFd, (struct sockaddr *)&addr, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (iFd == -1)
     {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        {
+            LOG_DEBUG(m_pLogger, ErrorCode::kDebug, "{} accept is busy", m_strAcceptorName.c_str());
+            return nullptr;
+        }
+
         LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to accept: {}", m_strAcceptorName.c_str(), strerror(errno));
         return nullptr;
     }
@@ -201,7 +179,7 @@ CConnectionImpl *CAcceptorImpl::Accept()
         upConnection->m_uHeartbeatIntervalMs = m_uHeartbeatIntervalMs;
         upConnection->m_uHeartbeatTimeoutMs = m_uHeartbeatTimeoutMs;
 
-        if (upConnection->InitChannel() != ErrorCode::kSuccess)
+        if (upConnection->InitSendChannel() != ErrorCode::kSuccess)
         {
             LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to init channel", m_strAcceptorName.c_str());
             return nullptr;

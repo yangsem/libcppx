@@ -15,7 +15,11 @@ public:
     CEpollImpl() = default;
     ~CEpollImpl()
     {
-        Exit();
+        if (m_iEpollFd != -1)
+        {
+            close(m_iEpollFd);
+            m_iEpollFd = -1;
+        }
     }
 
     int32_t Init()
@@ -26,15 +30,6 @@ public:
             return -1;
         }
         return 0;
-    }
-
-    void Exit()
-    {
-        if (m_iEpollFd != -1)
-        {
-            close(m_iEpollFd);
-            m_iEpollFd = -1;
-        }
     }
 
     int32_t Add(int32_t iFd, void *pCtx, uint32_t uEvents)

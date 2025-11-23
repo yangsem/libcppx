@@ -9,6 +9,7 @@
 #include <memory/allocator_ex.h>
 #include <channel/channel.h>
 #include <thread/spin_lock.h>
+#include "message.h"
 #include "message_pool.h"
 #include "dispatcher.h"
 
@@ -28,7 +29,7 @@ public:
 
     int32_t Init(NetworkConfig *pConfig);
 
-    int32_t InitChannel();
+    int32_t InitSendChannel();
 
     void SetID(uint64_t uID) { m_uID = uID; }
     void SetIOThreadIndex(uint32_t uIOThreadIndex) { m_uIOThreadIndex = uIOThreadIndex; }
@@ -45,7 +46,8 @@ public:
     int32_t Recv(void *pData, uint32_t uLength, uint32_t uTimeoutMs = 0) override;
 
     int32_t Call(IMessage *pRequest, IMessage *pResponse, uint32_t uTimeoutMs = 0) override;
-    int32_t Call(const uint8_t *pRequest, uint32_t uRequestLength, IMessage *pResponse, uint32_t uTimeoutMs = 0) override;
+    int32_t Call(const uint8_t *pRequest, uint32_t uRequestLength, 
+                 IMessage *pResponse, uint32_t uTimeoutMs = 0) override;
 
     bool IsConnected() const override { return m_iFd != -1; }
     uint64_t GetID() const override { return m_uID; }
@@ -54,34 +56,32 @@ public:
     uint16_t GetRemotePort() const override { return m_uRemotePort; }
     const char *GetLocalIP() const override { return m_strLocalIP.c_str(); }
     uint16_t GetLocalPort() const override { return m_uLocalPort; }
+    const char *GetName() const override { return m_strConnectionName.c_str(); }
 
     int32_t GetFd() const { return m_iFd; }
-    const char *GetName() const { return m_strConnectionName.c_str(); }
-    
-    int32_t Attach();
-    int32_t Detach();
-
     int32_t GetStats(NetworkStats *pStats) const;
 
-private:
-    inline int32_t SendData(const uint8_t *pData, uint32_t uLength);
+    int32_t OnConnected();
+    void OnDisconnected();
+
+    int32_t Recv(uint32_t uSize);
+    int32_t DeliverMessage(IMessage *pMessage);
+
+    int32_t Send(uint32_t uSize);
+
 
 private:
     uint64_t m_uID{0};
-    int32_t m_iFd{-1};
     uint32_t m_uIOThreadIndex{0};
+    int32_t m_iFd{-1};
+    CMessageImpl *m_pMessageRecv{nullptr};
     ICallback *m_pCallback{nullptr};
     CMessagePool *m_pMessagePool{nullptr};
     uint64_t m_ulastRecvTimeNs{0};
 
-    bool m_bIsASyncSend{false};
     base::SpinLock *m_pSpinLockSend{nullptr};
     base::channel::SPSCFixedBoundedChannel *m_pChannelSend{nullptr};
     base::channel::SPSCFixedBoundedChannel *m_pChannelPrioritySend{nullptr};
-
-    base::SpinLock *m_pSpinLockRecv{nullptr};
-    IMessage **m_ppMessageRecv{nullptr};
-    base::channel::SPSCFixedBoundedChannel *m_pChannelRecv{nullptr};
 
     IDispatcher *m_pDispatcher{nullptr};
     base::memory::IAllocatorEx *m_pAllocatorEx{nullptr};

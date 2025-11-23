@@ -5,7 +5,7 @@
 #include <vector>
 #include <string>
 #include <unordered_set>
-#include "epoll_impl.h"
+#include <engine.h>
 
 namespace cppx
 {
@@ -18,27 +18,29 @@ public:
     CEventDispatcher(NetworkLogger *pLogger, base::memory::IAllocatorEx *pAllocatorEx);
     ~CEventDispatcher();
 
-    int32_t Init(const char *pEngineName);
-    void Exit();
+    int32_t Init(IEngine *pEngine);
+
+    int32_t DoTask(Task &task) override;
 
 private:
     static bool RunWrapper(void *pArg);
     void Run();
 
     void ProcessEvent(const struct epoll_event &epollEvent);
-    void ProcessTask(const Task &task);
+    void ProcessAcceptorEvent(const struct epoll_event &epollEvent);
+    void ProcessConnectionEvent(const struct epoll_event &epollEvent);
 
+    bool ProcessTask(const Task &task);
     template<TaskType eTaskType>
     bool ProcessTask(const Task &task);
+    static void DetachCallback(IConnection *pConnection, void *pCtx);
 
 private:
-    CEpollImpl m_EpollImpl;
-    std::vector<struct epoll_event> m_vecEpollEvents;
 
     std::unordered_set<void *> m_setAcceptor;
     std::unordered_set<void *> m_setConnection;
 
-    std::string m_strEngineName;
+    IEngine *m_pEngine{nullptr};
 };
 
 }

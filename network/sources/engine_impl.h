@@ -1,12 +1,13 @@
 #ifndef __CPPX_NETWORK_ENGINE_IMPL_H__
 #define __CPPX_NETWORK_ENGINE_IMPL_H__
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 #include <mutex>
 #include <unordered_map>
-
+#include <atomic>
 #include <engine.h>
 #include <memory/allocator_ex.h>
 #include <thread/thread_manager.h>
@@ -39,10 +40,12 @@ public:
 
     int32_t CreateConnection(NetworkConfig *pConfig, ICallback *pCallback) override;
     void DestroyConnection(IConnection *pConnection) override;
-    int32_t DetachConnection(IConnection *pConnection) override;
     int32_t AttachConnection(IConnection *pConnection) override;
+    int32_t DetachConnection(IConnection *pConnection) override;
+    int32_t DetachConnection2(IConnection *pConnection, DetachCallbackFunc pCallback = nullptr, void *pCtx = nullptr) override;
 
     int32_t GetStats(NetworkStats *pStats) const override;
+    const char *GetName() const override { return m_strEngineName.c_str(); }
 
 private:
     CMessagePool m_MessagePool;
@@ -52,6 +55,7 @@ private:
     std::string m_strEngineName;
     
     CEventDispatcher m_EventDispatcher;
+    std::atomic<uint32_t> m_uNextIODispatcherIndex{0};
     std::vector<std::unique_ptr<CIODispatcher>> m_vecIODispatchers;
 
     std::mutex m_mutex;

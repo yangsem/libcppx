@@ -139,6 +139,12 @@ public:
      * @return 本地端口
      */
     virtual uint16_t GetLocalPort() const = 0;
+
+    /**
+     * @brief 获取连接名称
+     * @return 连接名称
+     */
+    virtual const char *GetName() const = 0;
 };
 
 }

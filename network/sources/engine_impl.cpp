@@ -1,4 +1,6 @@
 #include "engine_impl.h"
+#include "dispatcher.h"
+#include <cstdint>
 #include <utilities/common.h>
 #include <utilities/error_code.h>
 #include <logger/logger_ex.h>
@@ -43,7 +45,7 @@ int32_t CEngineImpl::Init(NetworkConfig *pConfig)
 
     m_MessagePool.Init(0, 0);
 
-    auto iErrorNo = m_EventDispatcher.Init(m_strEngineName.c_str());
+    auto iErrorNo = m_EventDispatcher.Init(this);
     if (iErrorNo != ErrorCode::kSuccess)
     {
         LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to init event dispatcher");
@@ -70,11 +72,6 @@ int32_t CEngineImpl::Init(NetworkConfig *pConfig)
 
 void CEngineImpl::Exit()
 {
-    m_EventDispatcher.Exit();
-    for (auto &upIODispatcher : m_vecIODispatchers)
-    {
-        upIODispatcher->Exit();
-    }
     m_vecIODispatchers.clear();
 
     m_umapAcceptor.clear();
@@ -228,18 +225,6 @@ void CEngineImpl::DestroyConnection(IConnection *pConnection)
     m_umapConnection.erase(it);
 }
 
-int32_t CEngineImpl::DetachConnection(IConnection *pConnection)
-{
-    if (pConnection == nullptr)
-    {
-        LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Invalid parameters");
-        return ErrorCode::kInvalidParam;
-    }
-
-    auto pConnectionImpl = static_cast<CConnectionImpl *>(pConnection);
-    return pConnectionImpl->Detach();
-}
-
 int32_t CEngineImpl::AttachConnection(IConnection *pConnection)
 {
     if (pConnection == nullptr)
@@ -248,8 +233,72 @@ int32_t CEngineImpl::AttachConnection(IConnection *pConnection)
         return ErrorCode::kInvalidParam;
     }
 
-    auto pConnectionImpl = static_cast<CConnectionImpl *>(pConnection);
-    return pConnectionImpl->Attach();
+    auto uIOThreadIndex = m_uNextIODispatcherIndex++ % m_vecIODispatchers.size();
+    auto pIODispatcher = m_vecIODispatchers[uIOThreadIndex].get();
+    Task task;
+    task.eTaskType = TaskType::kAddConnection;
+    task.pCtx = pConnection;
+    if (pIODispatcher->PostTask(task) != ErrorCode::kSuccess)
+    {
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "{} failed to post task", pConnection->GetName());
+        return ErrorCode::kInvalidCall;
+    }
+    return ErrorCode::kSuccess;
+}
+
+int32_t CEngineImpl::DetachConnection(IConnection *pConnection)
+{
+    if (pConnection == nullptr)
+    {
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Invalid parameters");
+        return ErrorCode::kInvalidParam;
+    }
+
+    auto uIOThreadIndex = pConnection->GetIOThreadIndex();
+    auto pIODispatcher = m_vecIODispatchers[uIOThreadIndex].get();
+    Task task;
+    task.eTaskType = TaskType::kRemoveConnection;
+    task.pCtx = pConnection;
+    if (pIODispatcher->PostTask(task) != ErrorCode::kSuccess)
+    {
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "{} failed to post task", pConnection->GetName());
+        return ErrorCode::kInvalidCall;
+    }
+    return ErrorCode::kSuccess;
+}
+
+int32_t CEngineImpl::DetachConnection2(IConnection *pConnection, DetachCallbackFunc pCallback, void *pCtx)
+{
+    if (pConnection == nullptr || pCallback == nullptr)
+    {
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidParam, "Invalid parameters");
+        return ErrorCode::kInvalidParam;
+    }
+
+    auto uIOThreadIndex = pConnection->GetIOThreadIndex();
+    auto pIODispatcher = m_vecIODispatchers[uIOThreadIndex].get();
+    auto funcCallback = [this, pConnection, pCallback, pCtx](bool bResult)
+    {
+        if (bResult)
+        {
+            pCallback(pConnection, pCtx);
+        }
+        else
+        {
+            LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} failed to detach connection", pConnection->GetName());
+        }
+    };
+
+    Task task;
+    task.eTaskType = TaskType::kDoDisconnect;
+    task.pCtx = pConnection;
+    task.funcCallback = funcCallback;
+    if (pIODispatcher->PostTask(task) != ErrorCode::kSuccess)
+    {
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "{} failed to post task", pConnection->GetName());
+        return ErrorCode::kInvalidCall;
+    }
+    return ErrorCode::kSuccess;
 }
 
 int32_t CEngineImpl::GetStats(NetworkStats *pStats) const

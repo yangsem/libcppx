@@ -28,6 +28,8 @@ protected:
     virtual ~IEngine() = default;
     
 public:
+    using DetachCallbackFunc = void (*)(IConnection *, void *pCtx);
+
     /**
      * @brief 创建网络引擎
      * @param pLogger 日志器
@@ -93,18 +95,25 @@ public:
     virtual void DestroyConnection(IConnection *pConnection) = 0;
 
     /**
-     * @brief 将连接从IO线程中分离通过Send/Recv同步处理
-     * @param pConnection 连接指针
-     * @return 0表示成功,否则失败
-     */
-    virtual int32_t DetachConnection(IConnection *pConnection) = 0;
-
-    /**
      * @brief 将连接附加到IO线程中异步处理Send/Recv
      * @param pConnection 连接指针
      * @return 0表示成功,否则失败
      */
     virtual int32_t AttachConnection(IConnection *pConnection) = 0;
+
+    /**
+     * @brief 将连接从IO线程中分离通过Send/Recv同步处理
+     * @param pConnection 连接指针
+     */
+    virtual int32_t DetachConnection(IConnection *pConnection) = 0;
+
+    /**
+     * @brief 将连接从IO线程中分离通过Send/Recv同步处理
+     * @param pConnection 连接指针
+     * @param pCallback 分离回调函数
+     * @return 0表示成功,否则失败
+     */
+    virtual int32_t DetachConnection2(IConnection *pConnection, DetachCallbackFunc pCallback = nullptr, void *pCtx = nullptr) = 0;
 
     /**
      * @brief 创建消息
@@ -125,6 +134,12 @@ public:
      * @return 0表示成功,否则失败
      */
     virtual int32_t GetStats(NetworkStats *pStats) const = 0;
+
+    /**
+     * @brief 获取网络引擎名称
+     * @return 网络引擎名称
+     */
+    virtual const char *GetName() const = 0;
 };
 
 namespace config
@@ -148,7 +163,6 @@ constexpr const char *kConnectTimeoutMs = "connect_timeout_ms"; // 建立连接�
 
 /* ============================== 网络引擎公共配置,全局和监听器、连接都可以使用 ============================== */
 constexpr const char *kProtocol = "protocol"; // 协议，类型: string
-constexpr const char *kIsASyncSend = "is_async_send"; // 是否异步发送，类型: bool
 constexpr const char *kSocketSendBufferBytes = "socket_send_buffer_bytes"; // 套接字发送缓冲区字节大小，类型: uint32_t
 constexpr const char *kSocketRecvBufferBytes = "socket_recv_buffer_bytes"; // 套接字接收缓冲区字节大小，类型: uint32_t
 constexpr const char *kHeartbeatIntervalMs = "heartbeat_interval_ms"; // 心跳间隔，类型: uint32_t
@@ -178,7 +192,6 @@ constexpr const bool kAutoReconnect = true; // 是否自动重连，默认true
 
 /* ============================== 网络引擎公共默认值 ============================== */
 constexpr const char *kProtocol = "tcp"; // 协议，默认tcp，可选tcp、udp
-constexpr const bool kIsASyncSend = true; // 是否异步发送，默认true
 constexpr const uint32_t kSocketSendBufferBytes = 0; // 套接字发送缓冲区字节大小，默认不设置,使用系统默认值
 constexpr const uint32_t kSocketRecvBufferBytes = 0; // 套接字接收缓冲区字节大小，默认不设置,使用系统默认值
 constexpr const uint32_t kHeartbeatIntervalMs = 1000; // 心跳间隔，默认1秒

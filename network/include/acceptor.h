@@ -33,6 +33,12 @@ public:
      * @return 接收器ID
      */
     virtual uint64_t GetID() const = 0;
+
+    /**
+     * @brief 获取接收器名称
+     * @return 接收器名称
+     */
+    virtual const char *GetName() const = 0;
 };
 
 }

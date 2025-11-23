@@ -11,7 +11,13 @@ namespace base
 
 enum ErrorCode : int32_t {
     kSuccess = 0,          // 成功
-    kEvent = 1,            // 事件
+    kTrace = 1,            // 跟踪
+    kDebug = 2,            // 调试
+    kInfo = 3,             // 信息
+    kWarn = 4,             // 警告
+    kError = 5,            // 错误
+    kFatal = 6,            // 致命错误
+    kEvent = 7,            // 事件
     kNotSupported = 100,   // 不支持
     kOutOfMemory = 101,    // 内存不足
     kInvalidParam = 102,   // 参数无效

@@ -22,7 +22,7 @@ public:
     ~CAcceptorImpl() override;
 
     int32_t Init(NetworkConfig *pConfig);
-    void Exit();
+
     int32_t Start() override;
     void Stop() override;
 
@@ -31,14 +31,13 @@ public:
     uint64_t GetID() const override { return m_uID; }
 
     int32_t GetFd() const { return m_iFd; }
-    const char *GetName() const { return m_strAcceptorName.c_str(); }
+    const char *GetName() const override { return m_strAcceptorName.c_str(); }
     const char *GetIP() const { return m_strAcceptorIP.c_str(); }
     uint16_t GetPort() const { return m_uAcceptorPort; }
 
     int32_t GetStats(NetworkStats *pStats) const;
 
 private:
-    bool m_bRunning{false};
     int32_t m_iFd{-1};
     uint64_t m_uID{0};
     ICallback *m_pCallback{nullptr};
