@@ -4,6 +4,7 @@
 #include <channel/channel.h>
 #include <cstring>
 #include <utility>
+#include <type_traits>
 
 namespace cppx
 {
@@ -11,6 +12,37 @@ namespace base
 {
 namespace channel
 {
+
+// SFINAE helper to detect if type T has SetInvalid() method
+template<typename T>
+class has_set_invalid
+{
+private:
+    template<typename U>
+    static auto test(int) -> decltype(std::declval<U>().SetInvalid(), std::true_type{});
+    
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value;
+};
+
+// Helper function to call SetInvalid if available
+template<typename T>
+typename std::enable_if<has_set_invalid<T>::value>::type
+call_set_invalid(T *pObj)
+{
+    pObj->SetInvalid();
+}
+
+template<typename T>
+typename std::enable_if<!has_set_invalid<T>::value>::type
+call_set_invalid(T *pObj)
+{
+    // Do nothing for types without SetInvalid()
+    (void)pObj;
+}
 
 template<typename T, ChannelType eChannelType, LengthType eLengthType>
 class IChannelEx final : public IChannel<eChannelType, ElementType::kFixedSize, eLengthType>
@@ -50,7 +82,7 @@ public:
             }
             catch (const std::exception &e)
             {
-                reinterpret_cast<T *>(pData)->SetInvalid();
+                call_set_invalid(reinterpret_cast<T *>(pData));
                 this->Post(pData);
             }
         }

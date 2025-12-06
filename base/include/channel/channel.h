@@ -37,7 +37,7 @@ struct ChannelConfig
 {
     uint32_t uElementSize;
     uint32_t uMaxElementCount;
-    uint32_t uTotalMemorySizeMB;
+    uint32_t uTotalMemorySizeKB;
 };
 
 template<ChannelType eChannelType, ElementType eElementType, LengthType eLengthType>

@@ -13,7 +13,7 @@ namespace channel
 
 CSPSCFixedBoundedChannel::~CSPSCFixedBoundedChannel()
 {
-    if (m_pDatap != nullptr)
+    if (likely(m_pDatap != nullptr))
     {
         memory::IAllocator::GetInstance()->Free(m_pDatap);
         m_pDatap = nullptr;
@@ -23,6 +23,12 @@ CSPSCFixedBoundedChannel::~CSPSCFixedBoundedChannel()
 
 int32_t CSPSCFixedBoundedChannel::Init(uint64_t uElemSize, uint64_t uSize)
 {
+    if (unlikely(uElemSize == 0 || uSize == 0))
+    {
+        SetLastError(ErrorCode::kInvalidParam);
+        return ErrorCode::kInvalidParam;
+    }
+
     m_uElemSizep = ALIGN8(uElemSize);
     m_uElemSizec = m_uElemSizep;
     m_uSizep = Up2PowerOf2(uSize);
@@ -35,7 +41,7 @@ int32_t CSPSCFixedBoundedChannel::Init(uint64_t uElemSize, uint64_t uSize)
     m_Statsc.Reset();
 
     auto pData = reinterpret_cast<uint8_t *>(memory::IAllocator::GetInstance()->Malloc(m_uSizep * m_uElemSizep));
-    if (pData == nullptr)
+    if (unlikely(pData == nullptr))
     {
         SetLastError(ErrorCode::kOutOfMemory);
         return ErrorCode::kOutOfMemory;
@@ -76,8 +82,9 @@ void CSPSCFixedBoundedChannel::Post(void *pData)
     if (likely(pData != nullptr))
     {
         std::atomic_thread_fence(std::memory_order_release);
-        m_uTail = (m_uTail + 1) % m_uSizep;
-        m_Statsp.uCount++;
+        m_uTail++;
+        m_Statsp.uCount2++;
+        return;
     }
     m_Statsp.uFailed2++;
 }
@@ -97,7 +104,7 @@ void *CSPSCFixedBoundedChannel::Get()
         return &m_pDatac[GetIndex(m_uHead, m_uSizec) * m_uElemSizec];
     }
 
-    m_Statsc.uFailed2++;
+    m_Statsc.uFailed++;
     return nullptr;
 }
 
@@ -106,8 +113,9 @@ void CSPSCFixedBoundedChannel::Delete(void *pData)
     if (likely(pData != nullptr))
     {
         std::atomic_thread_fence(std::memory_order_acquire);
-        m_uHead = (m_uHead + 1) % m_uSizec;
+        m_uHead++;
         m_Statsc.uCount2++;
+        return;
     }
     m_Statsc.uFailed2++;
 }
@@ -151,6 +159,11 @@ int32_t CSPSCFixedBoundedChannel::GetStats(IJson *pStats) const
 template<>
 SPSCFixedBoundedChannel *SPSCFixedBoundedChannel::Create(const ChannelConfig *pConfig)
 {
+    if (unlikely(pConfig == nullptr))
+    {
+        return nullptr;
+    }
+
     auto pChannel = memory::IAllocatorEx::GetInstance()->New<CSPSCFixedBoundedChannel>();
     if (likely(pChannel != nullptr))
     {

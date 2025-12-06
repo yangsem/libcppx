@@ -237,7 +237,7 @@ void *CSPSCVariableBoundedChannel::NewEntry(uint32_t uNewSize)
 
 void *CSPSCVariableBoundedChannel::GetEntry()
 {
-    if (unlikely(m_uHead < m_uTailRef))
+    if (unlikely(m_uHead <= m_uTailRef))
     {
         return nullptr;
     }
@@ -248,6 +248,7 @@ void *CSPSCVariableBoundedChannel::GetEntry()
     /**
         *             head              tail
         * _____________|_________________|_________
+        *                _____
     */
     if (uHead < uTail)
     {
@@ -292,10 +293,15 @@ void *CSPSCVariableBoundedChannel::GetEntry()
 template<>
 SPSCVariableBoundedChannel *SPSCVariableBoundedChannel::Create(const ChannelConfig *pConfig)
 {
+    if (unlikely(pConfig == nullptr))
+    {
+        return nullptr;
+    }
+
     auto pChannel = memory::IAllocatorEx::GetInstance()->New<CSPSCVariableBoundedChannel>();
     if (likely(pChannel != nullptr))
     {
-        auto iErrorNo = pChannel->Init(pConfig->uTotalMemorySizeMB);
+        auto iErrorNo = pChannel->Init(pConfig->uTotalMemorySizeKB);
         if (iErrorNo != ErrorCode::kSuccess)
         {
             memory::IAllocatorEx::GetInstance()->Delete(pChannel);
