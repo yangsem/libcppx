@@ -365,7 +365,18 @@ int32_t CConnectionImpl::DeliverMessage()
 
         // 获取消息长度
         uint32_t uMessageLength = m_pCallback->OnMessageLength(pData, uAvailableLength);
-        if (likely(uMessageLength <= uAvailableLength))
+        if (unlikely(uMessageLength == 0))
+        {
+            // 数据不足，无法识别完整消息，等待更多数据
+            return ErrorCode::kSuccess;
+        }
+        else if (unlikely(uMessageLength == UINT32_MAX))
+        {
+            // 异常数据，需要断开连接
+            LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} invalid message data", m_strConnectionName.c_str());
+            return ErrorCode::kInvalidState;
+        }
+        else if (likely(uMessageLength <= uAvailableLength))
         {
             // 有完整的消息，处理它
             m_pCallback->OnMessage(this, pData, uMessageLength);
@@ -379,18 +390,7 @@ int32_t CConnectionImpl::DeliverMessage()
                 break;
             }
         }
-        else if (unlikely(uMessageLength == 0))
-        {
-            // 数据不足，无法识别完整消息，等待更多数据
-            return ErrorCode::kSuccess;
-        }
-        else if (unlikely(uMessageLength == UINT32_MAX))
-        {
-            // 异常数据，需要断开连接
-            LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} invalid message data", m_strConnectionName.c_str());
-            return ErrorCode::kInvalidState;
-        }
-        else
+        else 
         {
             // 数据不足，无法识别完整消息，等待更多数据
             break;
@@ -421,7 +421,7 @@ int32_t CConnectionImpl::Recv(uint32_t uSize)
             LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to recv: {}", 
                 m_strConnectionName.c_str(), strerror(errno));
             
-            OnError(strerror(errno));
+            OnError("failed to recv message");
             Close();
             return iErrorNo;
         }
@@ -430,7 +430,7 @@ int32_t CConnectionImpl::Recv(uint32_t uSize)
         if (unlikely(iErrorNo != ErrorCode::kSuccess))
         {
             LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to deliver message", m_strConnectionName.c_str());
-            OnError(strerror(errno));
+            OnError("failed to deliver message");
             Close();
             return iErrorNo;
         }
