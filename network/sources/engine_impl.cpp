@@ -59,7 +59,7 @@ int32_t CEngineImpl::Init(NetworkConfig *pConfig)
             LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "Failed to create io dispatcher");
             return ErrorCode::kOutOfMemory;
         }
-        iErrorNo = upIODispatcher->Init();
+        iErrorNo = upIODispatcher->Init(this);
         if (iErrorNo != ErrorCode::kSuccess)
         {
             LOG_ERROR(m_pLogger, ErrorCode::kInvalidCall, "Failed to init io dispatcher");

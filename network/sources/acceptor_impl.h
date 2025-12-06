@@ -48,7 +48,6 @@ private:
     std::string m_strAcceptorIP;
     uint16_t m_uAcceptorPort{0};
 
-    bool m_bIsASyncSend{false};
     uint32_t m_uSocketSendBufferSize{0};
     uint32_t m_uSocketRecvBufferSize{0};
     uint32_t m_uHeartbeatIntervalMs{0};

@@ -12,6 +12,8 @@
 #include "message.h"
 #include "message_pool.h"
 #include "dispatcher.h"
+#include "receive_buffer.h"
+#include "send_buffer.h"
 
 namespace cppx
 {
@@ -29,7 +31,7 @@ public:
 
     int32_t Init(NetworkConfig *pConfig);
 
-    int32_t InitSendChannel();
+    int32_t InitBuffer();
 
     void SetID(uint64_t uID) { m_uID = uID; }
     void SetIOThreadIndex(uint32_t uIOThreadIndex) { m_uIOThreadIndex = uIOThreadIndex; }
@@ -63,9 +65,10 @@ public:
 
     int32_t OnConnected();
     void OnDisconnected();
+    void OnError(const char *pErrorMsg);
 
     int32_t Recv(uint32_t uSize);
-    int32_t DeliverMessage(IMessage *pMessage);
+    int32_t DeliverMessage();
 
     int32_t Send(uint32_t uSize);
 
@@ -74,14 +77,12 @@ private:
     uint64_t m_uID{0};
     uint32_t m_uIOThreadIndex{0};
     int32_t m_iFd{-1};
-    CMessageImpl *m_pMessageRecv{nullptr};
+    CReceiveBuffer m_ReceiveBuffer;
     ICallback *m_pCallback{nullptr};
-    CMessagePool *m_pMessagePool{nullptr};
     uint64_t m_ulastRecvTimeNs{0};
 
-    base::SpinLock *m_pSpinLockSend{nullptr};
-    base::channel::SPSCFixedBoundedChannel *m_pChannelSend{nullptr};
-    base::channel::SPSCFixedBoundedChannel *m_pChannelPrioritySend{nullptr};
+    CMessagePool *m_pMessagePool{nullptr};
+    CSendBuffer m_SendBuffer;
 
     IDispatcher *m_pDispatcher{nullptr};
     base::memory::IAllocatorEx *m_pAllocatorEx{nullptr};

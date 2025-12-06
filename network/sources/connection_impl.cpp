@@ -1,26 +1,19 @@
-#include "connection_impl.h"
-#include "callback.h"
-#include "dispatcher.h"
-#include "engine.h"
-#include "message.h"
-#include "thread/spin_lock.h"
-#include "utilities/common.h"
-#include <cstdint>
-#include <utilities/error_code.h>
-#include <logger/logger_ex.h>
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <poll.h>
+#include <utilities/common.h>
+#include <utilities/error_code.h>
+#include <logger/logger_ex.h>
+#include "connection_impl.h"
+#include "dispatcher.h"
 
 namespace cppx
 {
 namespace network
 {
-
-
-constexpr uint32_t kNormalMessageMaxSize = 1024; // 常见消息的最大长度
 
 CConnectionImpl::CConnectionImpl(uint64_t uID, ICallback *pCallback, IDispatcher *pDispatcher, 
                                  NetworkLogger *pLogger, base::memory::IAllocatorEx *pAllocatorEx)
@@ -48,23 +41,17 @@ CConnectionImpl::~CConnectionImpl()
     m_uIOThreadIndex = 0;
 }
 
-int32_t CConnectionImpl::InitSendChannel()
+int32_t CConnectionImpl::InitBuffer()
 {
-    m_pSpinLockSend = base::SpinLock::Create();
-    if (m_pSpinLockSend == nullptr)
+    if (m_ReceiveBuffer.Init(m_pAllocatorEx, 4096) != ErrorCode::kSuccess)
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to create spin lock", m_strConnectionName.c_str());
+        LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to init buffer", m_strConnectionName.c_str());
         return ErrorCode::kSystemError;
     }
 
-    base::channel::ChannelConfig stConfig;
-    stConfig.uElementSize = sizeof(IMessage *);
-    stConfig.uMaxElementCount = 1024;
-    m_pChannelSend = base::channel::SPSCFixedBoundedChannel::Create(&stConfig);
-    m_pChannelPrioritySend = base::channel::SPSCFixedBoundedChannel::Create(&stConfig);
-    if (m_pChannelSend == nullptr || m_pChannelPrioritySend == nullptr)
+    if (m_SendBuffer.Init() != ErrorCode::kSuccess)
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to create channel", m_strConnectionName.c_str());
+        LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to init send buffer", m_strConnectionName.c_str());
         return ErrorCode::kSystemError;
     }
 
@@ -99,7 +86,7 @@ int32_t CConnectionImpl::Init(NetworkConfig *pConfig)
 
 
 
-    if (InitSendChannel() != ErrorCode::kSuccess)
+    if (InitBuffer() != ErrorCode::kSuccess)
     {
         LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to init channel", m_strConnectionName.c_str());
         return ErrorCode::kSystemError;
@@ -275,17 +262,7 @@ int32_t CConnectionImpl::Send(IMessage *pMessage, bool bPriority)
         return ErrorCode::kInvalidCall;
     }
 
-    base::SpinLockGuard guard(m_pSpinLockSend);
-    auto channel = bPriority ? m_pChannelPrioritySend : m_pChannelSend;
-    auto pData = channel->New();
-    if (likely(pData != nullptr))
-    {
-        *reinterpret_cast<IMessage **>(pData) = pMessage;
-        channel->Post(pData);
-        return ErrorCode::kSuccess;
-    }
-
-    return ErrorCode::kOutOfMemory;
+    return m_SendBuffer.Send(pMessage, bPriority);
 }
 
 int32_t CConnectionImpl::Send(const uint8_t *pData, uint32_t uLength, bool bPriority)
@@ -371,89 +348,110 @@ void CConnectionImpl::OnDisconnected()
     }
 }
 
-int32_t CConnectionImpl::DeliverMessage(IMessage *pMessage)
+void CConnectionImpl::OnError(const char *pErrorMsg)
 {
-    uint32_t uDeliverLength = 0;
-    auto uMessageLength = m_pCallback->OnMessageLength(pMessage->GetData(), pMessage->GetDataLength());
-    if (unlikely(uMessageLength == 0))
+    if (m_pCallback != nullptr)
     {
-        return ErrorCode::kSuccess;
+        m_pCallback->OnError(this, pErrorMsg);
     }
-    else if (unlikely(uMessageLength == UINT32_MAX))
+}
+
+int32_t CConnectionImpl::DeliverMessage()
+{
+    while (true)
     {
-        LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} invalid message", m_strConnectionName.c_str());
-        return ErrorCode::kInvalidState;
-    }
-    else
-    {
-        if (likely(pMessage->GetDataLength() == uMessageLength))
+        auto pData = m_ReceiveBuffer.GetReadBegin();
+        auto uAvailableLength = m_ReceiveBuffer.GetReadLength();
+
+        // 获取消息长度
+        uint32_t uMessageLength = m_pCallback->OnMessageLength(pData, uAvailableLength);
+        if (likely(uMessageLength <= uAvailableLength))
         {
-            m_pCallback->OnMessage(this, pMessage);
+            // 有完整的消息，处理它
+            m_pCallback->OnMessage(this, pData, uMessageLength);
+            
+            // 消费已处理的数据
+            m_ReceiveBuffer.Consume(uMessageLength);
+            
+            // 如果刚好处理完所有数据，退出循环
+            if (unlikely(uMessageLength == uAvailableLength))
+            {
+                break;
+            }
+        }
+        else if (unlikely(uMessageLength == 0))
+        {
+            // 数据不足，无法识别完整消息，等待更多数据
             return ErrorCode::kSuccess;
         }
-        else if (pMessage->GetDataLength() > uMessageLength)
+        else if (unlikely(uMessageLength == UINT32_MAX))
         {
-            // 不止一个消息
-            while (uDeliverLength < pMessage->GetDataLength())
-            {
-                auto pNewMessage = NewMessage(uMessageLength);
-                if (unlikely(pNewMessage == nullptr))
-                {
-                    LOG_ERROR(m_pLogger, ErrorCode::kOutOfMemory, "{} failed to create message", m_strConnectionName.c_str());
-                    return ErrorCode::kOutOfMemory;
-                }
-                pNewMessage->Append(pMessage->GetData() + uDeliverLength, uMessageLength);
-                pNewMessage->SetSize(uMessageLength);
-                uDeliverLength += uMessageLength;
-                m_pCallback->OnMessage(this, pNewMessage);
-            }
+            // 异常数据，需要断开连接
+            LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} invalid message data", m_strConnectionName.c_str());
+            return ErrorCode::kInvalidState;
         }
         else
         {
-            // 不足一个消息
-            return ErrorCode::kSuccess;
+            // 数据不足，无法识别完整消息，等待更多数据
+            break;
         }
     }
+
+    return ErrorCode::kSuccess;
 }
 
 int32_t CConnectionImpl::Recv(uint32_t uSize)
 {
-    int32_t iTotalRecv = 0;
-    while (iTotalRecv < uSize)
+    if (unlikely(m_iFd == -1))
     {
-        auto pData = m_pMessageRecv->GetData();
-        auto uCapacity = m_pMessageRecv->GetCapacity();
-        auto iRecv = recv(m_iFd, pData + iTotalRecv, uCapacity - iTotalRecv, 0);
-        if (likely(iRecv > 0))
-        {
-            iTotalRecv += iRecv;
-            m_pMessageRecv->SetSize(m_pMessageRecv->GetDataLength() + iRecv);
-            auto iRet = DeliverMessage(m_pMessageRecv);
-            if (unlikely(iRet != ErrorCode::kSuccess))
-            {
-                LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to deliver message", 
-                    m_strConnectionName.c_str());
-                return -1;
-            }
-        }
-        else if (iRecv == 0)
-        {
-            return 0;
-        }
-        else if (iRecv == -1)
-        {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
-                // 可能 return 0？
-                return iTotalRecv;
-            }
+        LOG_ERROR(m_pLogger, ErrorCode::kInvalidState, "{} is not connected", m_strConnectionName.c_str());
+        return ErrorCode::kInvalidState;
+    }
 
+    uint32_t uTotalRecv = 0;
+    while (uTotalRecv < uSize)
+    {
+        bool bEOF = false;
+        uint32_t uRecvLength = 0;
+        uint32_t uRemaining = uSize - uTotalRecv;
+        
+        int32_t iErrorNo = m_ReceiveBuffer.Recv(m_iFd, uRemaining, uRecvLength, bEOF);
+        if (unlikely(iErrorNo != ErrorCode::kSuccess))
+        {
             LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to recv: {}", 
                 m_strConnectionName.c_str(), strerror(errno));
-            return -1;
+            
+            OnError(strerror(errno));
+            Close();
+            return iErrorNo;
         }
+
+        iErrorNo = DeliverMessage();
+        if (unlikely(iErrorNo != ErrorCode::kSuccess))
+        {
+            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to deliver message", m_strConnectionName.c_str());
+            OnError(strerror(errno));
+            Close();
+            return iErrorNo;
+        }
+        
+        if (bEOF)
+        {
+            LOG_INFO(m_pLogger, ErrorCode::kSuccess, "{} recv EOF", m_strConnectionName.c_str());
+            Close();
+            return uTotalRecv;
+        }
+        
+        if (uRecvLength == 0)
+        {
+            // EAGAIN or EWOULDBLOCK, 没有更多数据可读
+            break;
+        }
+        
+        uTotalRecv += uRecvLength;
     }
-    return iTotalRecv;
+    
+    return ErrorCode::kSuccess;
 }
 
 }

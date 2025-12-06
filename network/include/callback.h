@@ -27,9 +27,11 @@ public:
 
     /**
      * @brief 处理消息
-     * @param pMessage 消息
+     * @param pConnection 连接
+     * @param pData 消息数据
+     * @param uLength 消息长度
      */
-    virtual void OnMessage(IConnection *pConnection, const IMessage *pMessage) = 0;
+    virtual void OnMessage(IConnection *pConnection, const uint8_t *pData, uint32_t uLength) = 0;
 
     /**
      * @brief 连接成功回调

@@ -48,7 +48,6 @@ int32_t CAcceptorImpl::Init(NetworkConfig *pConfig)
 
     try
     {
-        m_bIsASyncSend = pConfig->GetBool(config::kIsASyncSend, default_value::kIsASyncSend);
         m_strAcceptorName = pConfig->GetString(config::kAcceptorName, default_value::kAcceptorName);
         m_strAcceptorIP = pConfig->GetString(config::kAcceptorIP, default_value::kAcceptorIP);
         m_uAcceptorPort = pConfig->GetUint32(config::kAcceptorPort, default_value::kAcceptorPort);
@@ -163,7 +162,6 @@ CConnectionImpl *CAcceptorImpl::Accept()
         upConnection->m_pCallback = m_pCallback;
         upConnection->m_pMessagePool = nullptr;
         clock_get_time_nano(upConnection->m_ulastRecvTimeNs);
-        upConnection->m_bIsASyncSend = m_bIsASyncSend;
 
         upConnection->m_pAllocatorEx = m_pAllocatorEx;
         upConnection->m_pDispatcher = m_pDispatcher;
@@ -179,9 +177,9 @@ CConnectionImpl *CAcceptorImpl::Accept()
         upConnection->m_uHeartbeatIntervalMs = m_uHeartbeatIntervalMs;
         upConnection->m_uHeartbeatTimeoutMs = m_uHeartbeatTimeoutMs;
 
-        if (upConnection->InitSendChannel() != ErrorCode::kSuccess)
+        if (upConnection->InitBuffer() != ErrorCode::kSuccess)
         {
-            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to init channel", m_strAcceptorName.c_str());
+            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to init buffer", m_strAcceptorName.c_str());
             return nullptr;
         }
     }

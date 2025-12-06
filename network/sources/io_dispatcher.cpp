@@ -60,77 +60,6 @@ bool CIODispatcher::RunWrapper(void *pArg)
     return true;
 }
 
-void CIODispatcher::ProcessRecvEvent(IConnection *pConnection, uint32_t uSize)
-{
-    auto pConnectionImpl = static_cast<CConnectionImpl *>(pConnection);
-    auto iRecvLen = pConnectionImpl->Recv(uSize);
-    if (iRecvLen < 0)
-    {
-        LOG_ERROR(m_pLogger, ErrorCode::kSysCallFailed, "{} failed to recv {}", 
-            pConnection->GetName(), strerror(errno));
-        Task task;
-        task.funcCallback = nullptr;
-        task.pCtx = pConnection;
-        task.eTaskType = TaskType::kRemoveRecv;
-        if (DoTask(task) != ErrorCode::kSuccess)
-        {
-            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", pConnection->GetName());
-            return;
-        }
-        pConnection->Close();
-    }
-    else if (iRecvLen == 0)
-    {
-        LOG_INFO(m_pLogger, ErrorCode::kSuccess, "{} recv 0 bytes", pConnection->GetName());
-        Task task;
-        task.funcCallback = nullptr;
-        task.pCtx = pConnection;
-        task.eTaskType = TaskType::kRemoveRecv;
-        if (DoTask(task) != ErrorCode::kSuccess)
-        {
-            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", pConnection->GetName());
-            return;
-        }
-        pConnection->Close();
-    }
-    else
-    {
-        LOG_DEBUG(m_pLogger, ErrorCode::kSuccess, "{} recv {} bytes", 
-            pConnection->GetName(), Wrap(iRecvLen));
-    }
-}
-
-void CIODispatcher::ProcessSendEvent(IConnection *pConnection, uint32_t uSize)
-{
-    auto pConnectionImpl = static_cast<CConnectionImpl *>(pConnection);
-    auto iSendLen = pConnectionImpl->Send(uSize);
-    if (iSendLen < 0)
-    {
-        LOG_ERROR(m_pLogger, ErrorCode::kSysCallFailed, "{} failed to send {}", 
-            pConnection->GetName(), strerror(errno));
-        pConnection->Close();
-    }
-    else if (iSendLen == 0)
-    {
-        LOG_INFO(m_pLogger, ErrorCode::kSuccess, "{} send 0 bytes", pConnection->GetName());
-        Task task;
-        task.funcCallback = nullptr;
-        task.pCtx = pConnection;
-        task.eTaskType = TaskType::kRemoveSend;
-        if (DoTask(task) != ErrorCode::kSuccess)
-        {
-            LOG_ERROR(m_pLogger, ErrorCode::kSystemError, "{} failed to post task", pConnection->GetName());
-            return;
-        }
-        pConnection->Close();
-    }
-    else
-    {
-        LOG_DEBUG(m_pLogger, ErrorCode::kSuccess, "{} send {} bytes", 
-            pConnection->GetName(), Wrap(iSendLen));
-    }
-}
-
 void CIODispatcher::Run()
 {
     int32_t iRet = m_EpollImpl.Wait(m_vecEpollEvents.data(), m_vecEpollEvents.size(), 1);
@@ -142,12 +71,12 @@ void CIODispatcher::Run()
             auto pConnection = static_cast<CConnectionImpl *>(epollEvent.data.ptr);
             if (epollEvent.events & EPOLLIN)
             {
-                ProcessRecvEvent(pConnection,m_uBatchSendRecvSize);
+                pConnection->Recv(m_uBatchSendRecvSize);
             }
 
             if (epollEvent.events & EPOLLOUT)
             {
-                ProcessSendEvent(pConnection, m_uBatchSendRecvSize);
+                pConnection->Send(m_uBatchSendRecvSize);
             }
 
             if (unlikely(epollEvent.events & EPOLLERR))
