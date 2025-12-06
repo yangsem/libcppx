@@ -9,6 +9,8 @@ namespace cppx
 {
 namespace base
 {
+namespace memory
+{
 
 IAllocator *IAllocator::GetInstance()
 {
@@ -90,5 +92,6 @@ int32_t CAllocatorImpl::GetStats(IJson *pJson) const
     return ErrorCode::kSuccess;
 }
 
+}
 }
 }

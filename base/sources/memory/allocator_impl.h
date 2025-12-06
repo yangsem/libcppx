@@ -7,6 +7,8 @@ namespace cppx
 {
 namespace base
 {
+namespace memory
+{
 
 class CAllocatorImpl final : public IAllocator
 {
@@ -31,6 +33,7 @@ private:
 
 };
 
+}
 }
 }
 #endif // __CPPX_ALLOCATOR_IMPL_H__

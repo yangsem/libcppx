@@ -209,6 +209,7 @@ target_link_libraries(base_tests
         gtest
         gtest_main
         ${BASE_LIB_PATH}
+        gcov
 )
 
 # 如果是动态库，需要设置运行时库路径

@@ -1,7 +1,6 @@
 #include "mpsc_variable_bounded_channel.h"
 #include <memory/allocator_ex.h>
 #include <utilities/error_code.h>
-#include <atomic>
 
 namespace cppx
 {
@@ -10,11 +9,12 @@ namespace base
 namespace channel
 {
 
+#if 0
 CMPSCVariableBoundedChannel::~CMPSCVariableBoundedChannel()
 {
     if (m_pDatap != nullptr)
     {
-        IAllocator::GetInstance()->Free(m_pDatap);
+        memory::IAllocator::GetInstance()->Free(m_pDatap);
         m_pDatap = nullptr;
         m_pDatac = nullptr;
     }
@@ -29,7 +29,7 @@ int32_t CMPSCVariableBoundedChannel::Init(uint64_t uMaxMemorySizeKB)
     m_Statsp.Reset();
     m_Statsc.Reset();
 
-    auto pData = reinterpret_cast<uint8_t *>(IAllocator::GetInstance()->Malloc(m_uSizep));
+    auto pData = reinterpret_cast<uint8_t *>(memory::IAllocator::GetInstance()->Malloc(m_uSizep));
     if (pData == nullptr)
     {
         return ErrorCode::kOutOfMemory;
@@ -75,6 +75,7 @@ Entry *CMPSCVariableBoundedChannel::New(uint32_t uSize)
     m_Statsp.uFailed++;
     return nullptr;
 }
+#endif
 
 }
 }

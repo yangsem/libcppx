@@ -8,12 +8,12 @@ namespace base
 
 SpinLock *SpinLock::Create()
 {
-    return IAllocatorEx::GetInstance()->New<CSpinLockImpl>();
+    return memory::IAllocatorEx::GetInstance()->New<CSpinLockImpl>();
 }
 
 void SpinLock::Destroy(SpinLock *pSpinLock)
 {
-    IAllocatorEx::GetInstance()->Delete(reinterpret_cast<CSpinLockImpl *>(pSpinLock));
+    memory::IAllocatorEx::GetInstance()->Delete(reinterpret_cast<CSpinLockImpl *>(pSpinLock));
 }
 
 void SpinLock::Lock()

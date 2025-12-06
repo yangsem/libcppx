@@ -15,7 +15,7 @@ CSPSCFixedBoundedChannel::~CSPSCFixedBoundedChannel()
 {
     if (m_pDatap != nullptr)
     {
-        IAllocator::GetInstance()->Free(m_pDatap);
+        memory::IAllocator::GetInstance()->Free(m_pDatap);
         m_pDatap = nullptr;
         m_pDatac = nullptr;
     }
@@ -34,7 +34,7 @@ int32_t CSPSCFixedBoundedChannel::Init(uint64_t uElemSize, uint64_t uSize)
     m_Statsp.Reset();
     m_Statsc.Reset();
 
-    auto pData = reinterpret_cast<uint8_t *>(IAllocator::GetInstance()->Malloc(m_uSizep * m_uElemSizep));
+    auto pData = reinterpret_cast<uint8_t *>(memory::IAllocator::GetInstance()->Malloc(m_uSizep * m_uElemSizep));
     if (pData == nullptr)
     {
         SetLastError(ErrorCode::kOutOfMemory);
@@ -151,13 +151,13 @@ int32_t CSPSCFixedBoundedChannel::GetStats(IJson *pStats) const
 template<>
 SPSCFixedBoundedChannel *SPSCFixedBoundedChannel::Create(const ChannelConfig *pConfig)
 {
-    auto pChannel = IAllocatorEx::GetInstance()->New<CSPSCFixedBoundedChannel>();
+    auto pChannel = memory::IAllocatorEx::GetInstance()->New<CSPSCFixedBoundedChannel>();
     if (likely(pChannel != nullptr))
     {
         auto iErrorNo = pChannel->Init(pConfig->uElementSize, pConfig->uMaxElementCount);
         if (iErrorNo != ErrorCode::kSuccess)
         {
-            IAllocatorEx::GetInstance()->Delete(pChannel);
+            memory::IAllocatorEx::GetInstance()->Delete(pChannel);
             return nullptr;
         }
         return reinterpret_cast<SPSCFixedBoundedChannel *>(pChannel);
@@ -168,7 +168,7 @@ SPSCFixedBoundedChannel *SPSCFixedBoundedChannel::Create(const ChannelConfig *pC
 template<>
 void SPSCFixedBoundedChannel::Destroy(IChannel *pChannel)
 {
-    IAllocatorEx::GetInstance()->Delete(reinterpret_cast<CSPSCFixedBoundedChannel *>(pChannel));
+    memory::IAllocatorEx::GetInstance()->Delete(reinterpret_cast<CSPSCFixedBoundedChannel *>(pChannel));
 }
 
 template<>

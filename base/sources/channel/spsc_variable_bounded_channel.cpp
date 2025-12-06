@@ -15,7 +15,7 @@ CSPSCVariableBoundedChannel::~CSPSCVariableBoundedChannel()
 {
     if (m_pDatap != nullptr)
     {
-        IAllocator::GetInstance()->Free(m_pDatap);
+        memory::IAllocator::GetInstance()->Free(m_pDatap);
         m_pDatap = nullptr;
         m_pDatac = nullptr;
     }
@@ -30,7 +30,7 @@ int32_t CSPSCVariableBoundedChannel::Init(uint64_t uMaxMemorySizeKB)
     m_Statsp.Reset();
     m_Statsc.Reset();
 
-    auto pData = reinterpret_cast<uint8_t *>(IAllocator::GetInstance()->Malloc(m_uSizep));
+    auto pData = reinterpret_cast<uint8_t *>(memory::IAllocator::GetInstance()->Malloc(m_uSizep));
     if (pData == nullptr)
     {
         return ErrorCode::kOutOfMemory;
@@ -292,13 +292,13 @@ void *CSPSCVariableBoundedChannel::GetEntry()
 template<>
 SPSCVariableBoundedChannel *SPSCVariableBoundedChannel::Create(const ChannelConfig *pConfig)
 {
-    auto pChannel = IAllocatorEx::GetInstance()->New<CSPSCVariableBoundedChannel>();
+    auto pChannel = memory::IAllocatorEx::GetInstance()->New<CSPSCVariableBoundedChannel>();
     if (likely(pChannel != nullptr))
     {
         auto iErrorNo = pChannel->Init(pConfig->uTotalMemorySizeMB);
         if (iErrorNo != ErrorCode::kSuccess)
         {
-            IAllocatorEx::GetInstance()->Delete(pChannel);
+            memory::IAllocatorEx::GetInstance()->Delete(pChannel);
             return nullptr;
         }
         return reinterpret_cast<SPSCVariableBoundedChannel *>(pChannel);
@@ -309,7 +309,7 @@ SPSCVariableBoundedChannel *SPSCVariableBoundedChannel::Create(const ChannelConf
 template<>
 void SPSCVariableBoundedChannel::Destroy(IChannel *pChannel)
 {
-    IAllocatorEx::GetInstance()->Delete(reinterpret_cast<CSPSCVariableBoundedChannel *>(pChannel));
+    memory::IAllocatorEx::GetInstance()->Delete(reinterpret_cast<CSPSCVariableBoundedChannel *>(pChannel));
 }
 
 template<>
