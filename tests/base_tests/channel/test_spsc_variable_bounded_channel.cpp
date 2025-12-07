@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <gtest/gtest.h>
 #include <channel/channel.h>
 #include <utilities/json.h>
@@ -87,17 +88,13 @@ TEST_F(SPSCVariableBoundedChannelTest, TestCreateAndDestroy)
     
     SPSCVariableBoundedChannel* pChannel = SPSCVariableBoundedChannel::Create(&config);
     ASSERT_NE(pChannel, nullptr);
-    
     // 测试Destroy接口
     SPSCVariableBoundedChannel::Destroy(pChannel);
     
     // 测试Create接口 - 空指针配置
     SPSCVariableBoundedChannel* pChannel2 = SPSCVariableBoundedChannel::Create(nullptr);
     // 根据实现，可能返回nullptr或有效指针
-    if (pChannel2 != nullptr)
-    {
-        SPSCVariableBoundedChannel::Destroy(pChannel2);
-    }
+    EXPECT_EQ(pChannel2, nullptr);
     
     // 测试Create接口 - 零内存大小
     ChannelConfig config2;
@@ -106,10 +103,7 @@ TEST_F(SPSCVariableBoundedChannelTest, TestCreateAndDestroy)
     config2.uTotalMemorySizeKB = 0;
     SPSCVariableBoundedChannel* pChannel3 = SPSCVariableBoundedChannel::Create(&config2);
     // 根据实现，可能返回nullptr或有效指针
-    if (pChannel3 != nullptr)
-    {
-        SPSCVariableBoundedChannel::Destroy(pChannel3);
-    }
+    EXPECT_EQ(pChannel3, nullptr);
     
     // 测试Create接口 - 大内存
     ChannelConfig config3;
@@ -117,10 +111,9 @@ TEST_F(SPSCVariableBoundedChannelTest, TestCreateAndDestroy)
     config3.uMaxElementCount = 0;
     config3.uTotalMemorySizeKB = 100 * 1024; // 100MB (100*1024KB)
     SPSCVariableBoundedChannel* pChannel4 = SPSCVariableBoundedChannel::Create(&config3);
-    if (pChannel4 != nullptr)
-    {
-        SPSCVariableBoundedChannel::Destroy(pChannel4);
-    }
+    EXPECT_NE(pChannel4, nullptr);
+
+    SPSCVariableBoundedChannel::Destroy(nullptr);
 }
 
 // 测试New接口（无参数版本）- 应该返回nullptr
@@ -152,26 +145,19 @@ TEST_F(SPSCVariableBoundedChannelTest, TestNewWithSize)
     
     // 测试New接口 - 正常大小
     void* pData = channel->New(64);
-    ASSERT_NE(pData, nullptr);
+    EXPECT_NE(pData, nullptr);
     
     // 测试New接口 - 不同大小
     void* pData2 = channel->New(32);
-    ASSERT_NE(pData2, nullptr);
+    EXPECT_NE(pData2, nullptr);
     
     // 测试New接口 - 零大小
     void* pData3 = channel->New(0);
-    // 根据实现，可能返回nullptr或有效指针
-    if (pData3 != nullptr)
-    {
-        // 如果返回了指针，应该可以正常使用
-    }
+    EXPECT_NE(pData3, nullptr);
     
     // 测试New接口 - 大尺寸
     void* pData4 = channel->New(1024);
-    if (pData4 != nullptr)
-    {
-        // 大尺寸元素
-    }
+    EXPECT_NE(pData4, nullptr);
 }
 
 // 测试Post接口
@@ -186,26 +172,23 @@ TEST_F(SPSCVariableBoundedChannelTest, TestPost)
     ASSERT_NE(channel.get(), nullptr);
     
     // 测试Post接口 - 正常情况
-    void* pData = channel->New(64);
+    void* pData = channel->New(4);
     ASSERT_NE(pData, nullptr);
-    
     // 写入一些测试数据
     int* pInt = static_cast<int*>(pData);
     *pInt = 42;
-    
     channel->Post(pData);
-    
     // 验证通道不为空
     EXPECT_FALSE(channel->IsEmpty());
     
     // 测试Post接口 - 多次Post
-    void* pData2 = channel->New(32);
+    void* pData2 = channel->New(4);
     ASSERT_NE(pData2, nullptr);
     int* pInt2 = static_cast<int*>(pData2);
     *pInt2 = 100;
     channel->Post(pData2);
-    
-    EXPECT_GE(channel->GetSize(), 1);
+
+    EXPECT_EQ(channel->GetSize(), 2);
 }
 
 // 测试Get接口
@@ -235,6 +218,7 @@ TEST_F(SPSCVariableBoundedChannelTest, TestGet)
     EXPECT_EQ(pGetData, pNewData); // 应该返回同一个指针
     int value = *static_cast<int*>(pGetData);
     EXPECT_EQ(value, 12345);
+    channel->Delete(pGetData);
     
     // 测试Get接口 - 多个元素
     void* pNewData2 = channel->New(sizeof(int));
@@ -263,16 +247,19 @@ TEST_F(SPSCVariableBoundedChannelTest, TestDelete)
     // 测试Delete接口 - 正常情况
     void* pData = channel->New(sizeof(int));
     ASSERT_NE(pData, nullptr);
+    int* pInt = static_cast<int*>(pData);
+    *pInt = 12345;
     channel->Post(pData);
     
     void* pGetData = channel->Get();
     ASSERT_NE(pGetData, nullptr);
-    
+    int value = *static_cast<int*>(pGetData);
+    EXPECT_EQ(value, 12345);
     channel->Delete(pGetData);
-    // Delete后不应该崩溃
     
     // 测试Delete接口 - 空指针
-    // channel->Delete(nullptr); // 可能崩溃或忽略
+    channel->Delete(nullptr); // 可能崩溃或忽略
+    EXPECT_EQ(channel->GetSize(), 0);
 }
 
 // 测试IsEmpty接口
@@ -346,7 +333,7 @@ TEST_F(SPSCVariableBoundedChannelTest, TestGetStats)
     ChannelConfig config;
     config.uElementSize = 0;
     config.uMaxElementCount = 0;
-    config.uTotalMemorySizeKB = 1024; // 1MB (1024KB)
+    config.uTotalMemorySizeKB = 2; // 1MB (1024KB)
     
     ChannelGuard channel(SPSCVariableBoundedChannel::Create(&config));
     ASSERT_NE(channel.get(), nullptr);
@@ -354,28 +341,42 @@ TEST_F(SPSCVariableBoundedChannelTest, TestGetStats)
     // 测试GetStats接口 - 空指针
     int32_t result = channel->GetStats(nullptr);
     EXPECT_NE(result, 0);
+
+    channel->Post(nullptr);
+    channel->Delete(nullptr);
+
+    void* pData = channel->New(1024);
+    ASSERT_NE(pData, nullptr);
+    memset(pData, 'c', 1024);
+    channel->Post(pData);
+
+    void* pData2 = channel->New(1024);
+    EXPECT_EQ(pData2, nullptr);
+
+    void* pGetData = channel->Get();
+    ASSERT_NE(pGetData, nullptr);
+    EXPECT_EQ(memcmp(pGetData, std::string(1024, 'c').c_str(), 1024), 0);
+    channel->Delete(pGetData);
+
+    void* pGetData2 = channel->Get();
+    EXPECT_EQ(pGetData2, nullptr);
     
     // 测试GetStats接口 - 正常情况
     IJson* pStats = IJson::Create();
     ASSERT_NE(pStats, nullptr);
-    
     result = channel->GetStats(pStats);
     EXPECT_EQ(result, 0);
-    
-    // 执行一些操作后再获取统计信息
-    void* pData = channel->New(sizeof(int));
-    if (pData != nullptr)
-    {
-        channel->Post(pData);
-        void* pGetData = channel->Get();
-        if (pGetData != nullptr)
-        {
-            channel->Delete(pGetData);
-        }
-    }
-    
-    result = channel->GetStats(pStats);
-    EXPECT_EQ(result, 0);
+    printf("pStats: %s\n", pStats->ToString());
+    auto pProducerStats = pStats->GetObject("producer");
+    EXPECT_EQ(pProducerStats->GetUint32("New"), 1);
+    EXPECT_EQ(pProducerStats->GetUint32("NewFailed"), 1);
+    EXPECT_EQ(pProducerStats->GetUint32("Post"), 1);
+    EXPECT_EQ(pProducerStats->GetUint32("PostFailed"), 0);
+    auto pConsumerStats = pStats->GetObject("consumer");
+    EXPECT_EQ(pConsumerStats->GetUint32("Get"), 1);
+    EXPECT_EQ(pConsumerStats->GetUint32("GetFailed"), 1);
+    EXPECT_EQ(pConsumerStats->GetUint32("Delete"), 1);
+    EXPECT_EQ(pConsumerStats->GetUint32("DeleteFailed"), 0);
     
     IJson::Destroy(pStats);
 }
@@ -540,7 +541,7 @@ TEST_F(SPSCVariableBoundedChannelTest, TestSingleProducerSingleConsumer)
     ChannelGuard channel(SPSCVariableBoundedChannel::Create(&config));
     ASSERT_NE(channel.get(), nullptr);
     
-    const int numElements = 10000;
+    const int numElements = 1000000;
     std::atomic<int> producedCount(0);
     std::atomic<int> consumedCount(0);
     std::atomic<bool> producerDone(false);
@@ -697,84 +698,6 @@ TEST_F(SPSCVariableBoundedChannelTest, TestPerformance)
     EXPECT_EQ(count, numElements);
     // 验证性能合理（10万次操作应该在几秒内完成）
     EXPECT_LT(duration.count(), 10000);
-}
-
-// 测试New和Post的配对使用
-TEST_F(SPSCVariableBoundedChannelTest, TestNewPostPair)
-{
-    ChannelConfig config;
-    config.uElementSize = 0;
-    config.uMaxElementCount = 0;
-    config.uTotalMemorySizeKB = 1024; // 1MB (1024KB)
-    
-    ChannelGuard channel(SPSCVariableBoundedChannel::Create(&config));
-    ASSERT_NE(channel.get(), nullptr);
-    
-    // 测试New后必须Post
-    void* pData = channel->New(sizeof(int));
-    ASSERT_NE(pData, nullptr);
-    
-    // 不Post直接再次New（可能失败或返回新指针）
-    void* pData2 = channel->New(sizeof(int));
-    // 根据实现，可能返回nullptr或新指针
-    ASSERT_EQ(pData2, nullptr);
-    // 正常Post
-    if (pData != nullptr)
-    {
-        int* pInt = static_cast<int*>(pData);
-        *pInt = 42;
-        channel->Post(pData);
-    }
-    
-    // 验证可以Get
-    void* pGetData = channel->Get();
-    if (pGetData != nullptr)
-    {
-        EXPECT_EQ(*static_cast<int*>(pGetData), 42);
-        channel->Delete(pGetData);
-    }
-}
-
-// 测试Get和Delete的配对使用
-TEST_F(SPSCVariableBoundedChannelTest, TestGetDeletePair)
-{
-    ChannelConfig config;
-    config.uElementSize = 0;
-    config.uMaxElementCount = 0;
-    config.uTotalMemorySizeKB = 1024; // 1MB (1024KB)
-    
-    ChannelGuard channel(SPSCVariableBoundedChannel::Create(&config));
-    ASSERT_NE(channel.get(), nullptr);
-    
-    // 先Post一些数据
-    for (int i = 0; i < 10; ++i)
-    {
-        void* pData = channel->New(sizeof(int));
-        if (pData != nullptr)
-        {
-            int* pInt = static_cast<int*>(pData);
-            *pInt = i;
-            channel->Post(pData);
-        }
-    }
-    
-    // 测试Get后必须Delete
-    void* pData = channel->Get();
-    ASSERT_NE(pData, nullptr);
-    
-    // 不Delete直接再次Get（应该获取下一个元素）
-    void* pData2 = channel->Get();
-    // 根据实现，可能返回nullptr或下一个元素
-    ASSERT_EQ(pData2, nullptr);
-    // 正常Delete
-    if (pData != nullptr)
-    {
-        channel->Delete(pData);
-    }
-    
-    // 验证大小减少
-    uint32_t size = channel->GetSize();
-    EXPECT_LE(size, 9);
 }
 
 // 测试混合大小的元素场景

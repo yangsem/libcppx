@@ -21,7 +21,7 @@ struct Entry
 {
     uint16_t uMagic;  // 魔数
     uint16_t uFlags;  // 标志位
-    uint32_t uLength; // 用户数据长度
+    uint32_t uLength; // 长度
 
     void *GetData()
     {
@@ -29,8 +29,6 @@ struct Entry
     }
 
     uint32_t GetDataLength() const { return uLength - sizeof(Entry); }
-
-    uint32_t GetTotalLength() const { return uLength; }
 
     static inline uint32_t CalSize(uint32_t uSize)
     {

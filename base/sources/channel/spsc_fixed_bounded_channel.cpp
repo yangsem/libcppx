@@ -74,6 +74,7 @@ void *CSPSCFixedBoundedChannel::New()
 void *CSPSCFixedBoundedChannel::New(uint32_t uSize)
 {
     UNSED(uSize);
+    SetLastError(ErrorCode::kInvalidCall);
     return nullptr;
 }
 

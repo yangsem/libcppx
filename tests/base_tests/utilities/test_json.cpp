@@ -2,7 +2,6 @@
 #include <utilities/json.h>
 #include <fstream>
 #include <cstring>
-#include <climits>
 #include <cstdint>
 #include <thread>
 #include <vector>
@@ -642,7 +641,7 @@ TEST_F(CppxJsonTest, TestBasicConcurrency)
     
     for (int t = 0; t < numThreads; ++t)
     {
-        threads.emplace_back([operationsPerThread]() {
+        threads.emplace_back([]() {
             for (int i = 0; i < operationsPerThread; ++i)
             {
                 JsonGuard jsonGuard;

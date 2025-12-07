@@ -23,6 +23,12 @@ CSPSCVariableBoundedChannel::~CSPSCVariableBoundedChannel()
 
 int32_t CSPSCVariableBoundedChannel::Init(uint64_t uMaxMemorySizeKB)
 {
+    if (unlikely(uMaxMemorySizeKB == 0))
+    {
+        SetLastError(ErrorCode::kInvalidParam);
+        return ErrorCode::kInvalidParam;
+    }
+
     m_uSizep = Up2PowerOf2(uMaxMemorySizeKB * 1024);
     m_uSizec = m_uSizep;
     m_uTail = 0;
@@ -31,8 +37,9 @@ int32_t CSPSCVariableBoundedChannel::Init(uint64_t uMaxMemorySizeKB)
     m_Statsc.Reset();
 
     auto pData = reinterpret_cast<uint8_t *>(memory::IAllocator::GetInstance()->Malloc(m_uSizep));
-    if (pData == nullptr)
+    if (unlikely(pData == nullptr))
     {
+        SetLastError(ErrorCode::kOutOfMemory);
         return ErrorCode::kOutOfMemory;
     }
 
@@ -44,6 +51,7 @@ int32_t CSPSCVariableBoundedChannel::Init(uint64_t uMaxMemorySizeKB)
 
 Entry *CSPSCVariableBoundedChannel::New()
 {
+    SetLastError(ErrorCode::kInvalidCall);
     return nullptr;
 }
 
@@ -56,7 +64,7 @@ Entry *CSPSCVariableBoundedChannel::New(uint32_t uSize)
         auto pEntry = reinterpret_cast<Entry *>(pData);
         pEntry->uMagic = kMagic;
         pEntry->uFlags = 0;
-        pEntry->uLength = uSize;
+        pEntry->uLength = uEntrySize;
         m_Statsp.uCount++;
         return pEntry;
     }
@@ -68,7 +76,7 @@ Entry *CSPSCVariableBoundedChannel::New(uint32_t uSize)
         auto pEntry = reinterpret_cast<Entry *>(pData);
         pEntry->uMagic = kMagic;
         pEntry->uFlags = 0;
-        pEntry->uLength = uSize;
+        pEntry->uLength = uEntrySize;
         m_Statsp.uCount++;
         return pEntry;
     }
@@ -82,8 +90,9 @@ void CSPSCVariableBoundedChannel::Post(Entry *pEntry)
     if (likely(pEntry != nullptr && pEntry->uMagic == kMagic))
     {
         std::atomic_thread_fence(std::memory_order_release);
-        m_uTail += pEntry->GetTotalLength();
-        m_Statsp.uCount++;
+        m_uTail += pEntry->uLength;
+        m_Statsp.uCount2++;
+        return;
     }
 
     m_Statsp.uFailed2++;
@@ -119,8 +128,9 @@ void CSPSCVariableBoundedChannel::Delete(Entry *pEntry)
     if (likely(pEntry != nullptr && pEntry->uMagic == kMagic))
     {
         std::atomic_thread_fence(std::memory_order_acquire);
-        m_uHead += pEntry->GetTotalLength();
+        m_uHead += pEntry->uLength;
         m_Statsc.uCount2++;
+        return;
     }
 
     m_Statsc.uFailed2++;
@@ -237,7 +247,7 @@ void *CSPSCVariableBoundedChannel::NewEntry(uint32_t uNewSize)
 
 void *CSPSCVariableBoundedChannel::GetEntry()
 {
-    if (unlikely(m_uHead <= m_uTailRef))
+    if (unlikely(m_uHead >= m_uTailRef))
     {
         return nullptr;
     }
@@ -278,7 +288,7 @@ void *CSPSCVariableBoundedChannel::GetEntry()
             *   _____
         */
         std::atomic_thread_fence(std::memory_order_acquire);
-        m_uHead = (m_uSizec - uHead) > Entry::CalSize(0) ? (m_uSizec - uHead) : pEntry->GetTotalLength();
+        m_uHead += (m_uSizec - uHead) > Entry::CalSize(0) ? (m_uSizec - uHead) : pEntry->uLength;
         assert(GetIndex(m_uHead, m_uSizec) == 0);
         uHead = 0;
         if (uHead < uTail)
@@ -321,13 +331,23 @@ void SPSCVariableBoundedChannel::Destroy(IChannel *pChannel)
 template<>
 void *SPSCVariableBoundedChannel::New()
 {
-    return reinterpret_cast<CSPSCVariableBoundedChannel *>(this)->New();
+    auto pEntry = reinterpret_cast<CSPSCVariableBoundedChannel *>(this)->New();
+    if (likely(pEntry != nullptr))
+    {
+        return pEntry->GetData();
+    }
+    return nullptr;
 }
 
 template<>
 void *SPSCVariableBoundedChannel::New(uint32_t uSize)
 {
-    return reinterpret_cast<CSPSCVariableBoundedChannel *>(this)->New(uSize);
+    auto pEntry = reinterpret_cast<CSPSCVariableBoundedChannel *>(this)->New(uSize);
+    if (likely(pEntry != nullptr))
+    {
+        return pEntry->GetData();
+    }
+    return nullptr;
 }
 
 template<>
@@ -343,7 +363,12 @@ void SPSCVariableBoundedChannel::Post(void *pData)
 template<>
 void *SPSCVariableBoundedChannel::Get()
 {
-    return reinterpret_cast<CSPSCVariableBoundedChannel *>(this)->Get();
+    auto pEntry = reinterpret_cast<CSPSCVariableBoundedChannel *>(this)->Get();
+    if (likely(pEntry != nullptr))
+    {
+        return pEntry->GetData();
+    }
+    return nullptr;
 }
 
 template<>

@@ -209,8 +209,21 @@ target_link_libraries(base_tests
         gtest
         gtest_main
         ${BASE_LIB_PATH}
-        gcov
 )
+
+# 代码覆盖率库配置
+# 如果 base 库启用了覆盖率，测试程序也需要启用覆盖率以正确链接
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Linux 使用 GCC，需要链接 gcov 库
+    target_link_libraries(base_tests PRIVATE gcov)
+elseif(APPLE)
+    # macOS 使用 Clang/LLVM，需要链接覆盖率运行时库
+    # 使用 --coverage 标志，Clang 会自动链接所需的运行时库
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_link_options(base_tests PRIVATE --coverage)
+        message(STATUS "macOS: added --coverage flag for Clang coverage runtime")
+    endif()
+endif()
 
 # 如果是动态库，需要设置运行时库路径
 if(BASE_LIB_TYPE STREQUAL "SHARED")
