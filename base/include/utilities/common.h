@@ -29,10 +29,10 @@
 #define NEW new (std::nothrow)
 #endif
 
-#ifndef OS_WIN
+#ifdef OS_LINUX
 #include <sys/syscall.h>
-#define getpid() getpid()
-#define gettid() syscall(SYS_gettid)
+#define getpid() (uint64_t)getpid()
+#define gettid() (uint64_t)syscall(SYS_gettid)
 #define set_thread_name(name) pthread_setname_np(pthread_self(), name)
 #define thread_bind_cpu(cpu_no)                                             \
     {                                                                       \
@@ -41,12 +41,25 @@
         CPU_SET(cpu_no, &cpuset);                                           \
         pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset); \
     }
-#else
+#elif defined(OS_MAC)
+#include <pthread.h>
+#define getpid() (uint64_t)getpid()
+inline uint64_t gettid() 
+{
+    uint64_t tid;
+    pthread_threadid_np(NULL, &tid);
+    return tid;
+}
+#define set_thread_name(name) // not supported in macOS
+#define thread_bind_cpu(cpu_no) // not supported in macOS
+#elif defined(OS_WIN)
 #include <windows.h>
-#define getpid() GetCurrentProcessId()
-#define gettid() GetCurrentThreadId()
+#define getpid() (uint64_t)GetCurrentProcessId()
+#define gettid() (uint64_t)GetCurrentThreadId()
 #define set_thread_name(name) // not supported in windows
 #define thread_bind_cpu(cpu_no) // not supported in windows
+#else
+#error "Unsupported OS"
 #endif
 
 #define CACHE_LINE 64

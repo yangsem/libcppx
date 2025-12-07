@@ -3,7 +3,6 @@
 #include <utilities/json.h>
 #include <thread>
 #include <atomic>
-#include <vector>
 #include <cstring>
 #include <cstdio>
 #include <chrono>

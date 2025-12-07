@@ -3,8 +3,12 @@
 
 #if defined(__WIN32) || defined(__WIN64)
 #define OS_WIN
-#else
+#elif defined(__APPLE__)
+#define OS_MAC
+#elif defined(__linux__)
 #define OS_LINUX
+#else
+#error "Unsupported OS"
 #endif
 
 

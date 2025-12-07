@@ -61,7 +61,6 @@ void IJson::Destroy(IJson *pJson)
 CJsonImpl::CJsonImpl(JsonType jsonType)
     : m_jsonValueData(GetJsonValueType(jsonType))
     , m_jsonValue(m_jsonValueData)
-    , m_bRoot(true)
 {
 }
 
@@ -72,14 +71,12 @@ CJsonImpl::CJsonImpl(JsonType jsonType)
 CJsonImpl::CJsonImpl(Json::Value &jsonValue, bool bRoot)
     : m_jsonValueData(bRoot ? jsonValue : Json::objectValue)
     , m_jsonValue(bRoot ? m_jsonValueData : jsonValue)
-    , m_bRoot(bRoot)
 {
 }
 
 CJsonImpl::CJsonImpl(const Json::Value &&jsonValue) 
     : m_jsonValueData(jsonValue)
     , m_jsonValue(m_jsonValueData)
-    , m_bRoot(true)
 {
 }
 
