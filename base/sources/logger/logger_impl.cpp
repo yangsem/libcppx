@@ -122,29 +122,30 @@ int32_t CLoggerImpl::Init(IJson *pConfig)
     if (m_bAsync)
     {
         channel::ChannelConfig stConfig;
-        stConfig.uElementSize = sizeof(void *);
+        stConfig.uElementSize = sizeof(LogItemHeader *);
+        stConfig.uMaxElementCount = 4096;
         m_pChannel = LogChannel::Create(&stConfig);
         if (m_pChannel == nullptr)
         {
             PRINT_ERROR("init logger failed, create channel failed %s", "");
-            SetLastError(ErrorCode::kSystemError);
-            return ErrorCode::kSystemError;
+            SetLastError(ErrorCode::kOutOfMemory);
+            return ErrorCode::kOutOfMemory;
         }
 
         m_pSpinLock = SpinLock::Create();
         if (m_pSpinLock == nullptr)
         {
             PRINT_ERROR("init logger failed, create spin lock failed %s", "");
-            SetLastError(ErrorCode::kSystemError);
-            return ErrorCode::kSystemError;
+            SetLastError(ErrorCode::kOutOfMemory);
+            return ErrorCode::kOutOfMemory;
         }
 
         m_pThreadManager = IThreadManager::GetInstance();
         if (m_pThreadManager == nullptr)
         {
             PRINT_ERROR("init logger failed, get thread manager failed %s", "");
-            SetLastError(ErrorCode::kSystemError);
-            return ErrorCode::kSystemError;
+            SetLastError(ErrorCode::kOutOfMemory);
+            return ErrorCode::kOutOfMemory;
         }
 
         char szThreadName[16];
@@ -532,7 +533,7 @@ int32_t CLoggerImpl::WriteLog(LogItem &logItem)
         uLogBufferIndex += (uint32_t)iParamLen;
     }
 
-    auto iFileLineLen = snprintf(pLogBuffer + uLogBufferIndex, uLogFormatBufferSize - uLogBufferIndex, "(%s:%s)", logItem.pFileLine, logItem.pFunction);
+    auto iFileLineLen = snprintf(pLogBuffer + uLogBufferIndex, uLogFormatBufferSize - uLogBufferIndex, "(%s,%s)", logItem.pFileLine, logItem.pFunction);
     if (likely(iFileLineLen > 0))
     {
         uLogBufferIndex += (uint32_t)iFileLineLen;
@@ -579,7 +580,7 @@ int32_t CLoggerImpl::OpenLogFile()
         // 重命名文件
         auto time = ITime::GetLocalTime();
         char szLogFileName[256];
-        snprintf(szLogFileName, sizeof(szLogFileName), "%s/%s-%04d%02d%02d-%02d%02d%02d.%s", 
+        snprintf(szLogFileName, sizeof(szLogFileName), "%s/%s-%04d%02d%02d-%02d%02d%02d%s", 
                  m_strLogPath.c_str(), m_strLoggerName.c_str(), 
                  time.uYear, time.uMonth, time.uDay, 
                  time.uHour, time.uMinute, time.uSecond, 
@@ -590,7 +591,7 @@ int32_t CLoggerImpl::OpenLogFile()
         }
     }
 
-    snprintf(m_szLogFileName, sizeof(m_szLogFileName), "%s/%s.%s", 
+    snprintf(m_szLogFileName, sizeof(m_szLogFileName), "%s/%s%s", 
              m_strLogPath.c_str(), m_strLoggerName.c_str(), m_strLogSuffix.c_str());
     // 如果文件存在，则以追加方式打开，否则创建文件
     m_pLogFile = fopen(m_szLogFileName, "a");

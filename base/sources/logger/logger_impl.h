@@ -18,7 +18,7 @@ namespace logger
 
 class CLoggerImpl final : public ILogger
 {
-    using LogChannel = channel::SPSCVariableBoundedChannel;
+    using LogChannel = channel::SPSCFixedBoundedChannel;
 public:
     enum class LogItemType : uint8_t
     {
